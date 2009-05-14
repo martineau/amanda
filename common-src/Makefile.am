@@ -85,6 +85,9 @@ endif
 if WANT_KRB5_SECURITY
 libamanda_la_SOURCES += krb5-security.c
 endif
+#if WANT_SSL_SECURITY
+libamanda_la_SOURCES += ssl-security.c
+#endif
 
 libamanda_la_SOURCES += local-security.c
 

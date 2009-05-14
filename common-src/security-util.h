@@ -61,6 +61,12 @@
 #  include <krb5.h>
 #endif
 
+//#ifdef SSL_SECURITY
+#include <openssl/crypto.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+//#endif
+
 struct sec_handle;
 
 /*
@@ -98,6 +104,11 @@ struct tcp_conn {
     char *              buffer;
     ssize_t             size_header_read;
     ssize_t             size_buffer_read;
+//#ifdef SSL_SECURITY
+    SSL_METHOD         *meth;
+    SSL_CTX            *ctx;
+    SSL                *ssl;
+//#endif
 };
 
 

@@ -49,6 +49,9 @@ extern const security_driver_t ssh_security_driver;
 #ifdef BSDTCP_SECURITY
 extern const security_driver_t bsdtcp_security_driver;
 #endif
+//#ifdef SSL_SECURITY
+extern const security_driver_t ssl_security_driver;
+//#endif
 #ifdef BSDUDP_SECURITY
 extern const security_driver_t bsdudp_security_driver;
 #endif
@@ -70,6 +73,9 @@ static const security_driver_t *drivers[] = {
 #ifdef BSDTCP_SECURITY
     &bsdtcp_security_driver,
 #endif
+//#ifdef SSL_SECURITY
+    &ssl_security_driver,
+//#endif
 #ifdef BSDUDP_SECURITY
     &bsdudp_security_driver,
 #endif
