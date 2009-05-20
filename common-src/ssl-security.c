@@ -47,15 +47,6 @@
 #include <openssl/err.h>
 
 /*
-#define RSA_CLIENT_CERT    "/home/martinea/ssl/amanda_server.crt"
-#define RSA_CLIENT_KEY     "/home/martinea/ssl/amanda_server.key"
-#define RSA_CLIENT_CA_CERT "/home/martinea/ssl/amanda_ca.crt"
-#define RSA_SERVER_CERT    "/home/martinea/ssl/amanda_client.crt"
-#define RSA_SERVER_KEY     "/home/martinea/ssl/amanda_client.key"
-#define RSA_SERVER_CA_CERT "/home/martinea/ssl/amanda_ca.crt"
-*/
-
-/*
  * Number of seconds ssl has to start up
  */
 #define	CONNECT_TIMEOUT	20
@@ -447,6 +438,14 @@ dbprintf("load ca cert file\n");
     } else {
         char *str;
 
+        str = X509_NAME_oneline(X509_get_subject_name(client_cert), 0, 0);
+        auth_debug(1, _("\t subject: %s\n"), str);
+        amfree (str);
+ 
+        str = X509_NAME_oneline(X509_get_issuer_name(client_cert), 0, 0);
+        auth_debug(1, _("\t issuer: %s\n"), str);
+        amfree(str);
+
 	str = validate_fingerprints(client_cert, ssl_fingerprint_file);
 	if (str) {
 	    dbprintf("%s\n", str);
@@ -602,22 +601,15 @@ dbprintf("load ca cert file\n");
 	security_seterror(&rh->sech, _("client have no certificate"));
 	return -1;
     } else {
-        char *str = X509_NAME_oneline(X509_get_subject_name(server_cert),0,0);
-	char cname[256];
-        dbprintf("\t subject: %s\n", str);
-        free (str);
- 
-        str = X509_NAME_oneline(X509_get_issuer_name(server_cert),0,0);
-        dbprintf("\t issuer: %s\n", str);
-        free(str);
+        char *str;
 
-	X509_NAME_get_text_by_NID(X509_get_subject_name (server_cert),
-				  NID_commonName, cname, 256);
-	if (strcasecmp(cname, "client1") != 0) {
-	    security_seterror(&rh->sech,
-			      _("Invalid common name in certificate"));
-	    return -1;
-	}
+        str = X509_NAME_oneline(X509_get_subject_name(server_cert), 0, 0);
+        auth_debug(1, _("\t subject: %s\n"), str);
+        amfree (str);
+ 
+        str = X509_NAME_oneline(X509_get_issuer_name(server_cert), 0, 0);
+        auth_debug(1, _("\t issuer: %s\n"), str);
+        amfree(str);
 
 	str = validate_fingerprints(server_cert, ssl_fingerprint_file);
 	if (str) {
