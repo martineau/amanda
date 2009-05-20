@@ -462,6 +462,10 @@ typedef enum {
     CNF_AUTOLABEL,
     CNF_DEBUG_DAYS,
     CNF_TAPER_PARALLEL_WRITE,
+    CNF_SSL_FINGERPRINT_FILE,
+    CNF_SSL_CERT_FILE,
+    CNF_SSL_KEY_FILE,
+    CNF_SSL_CA_CERT_FILE,
     CNF_CNF /* sentinel */
 } confparm_key;
 
@@ -685,6 +689,10 @@ typedef enum {
     DUMPTYPE_CLIENT_PORT,
     DUMPTYPE_DATA_PATH,
     DUMPTYPE_ALLOW_SPLIT,
+    DUMPTYPE_SSL_FINGERPRINT_FILE,
+    DUMPTYPE_SSL_CERT_FILE,
+    DUMPTYPE_SSL_KEY_FILE,
+    DUMPTYPE_SSL_CA_CERT_FILE,
     DUMPTYPE_DUMPTYPE /* sentinel */
 } dumptype_key;
 
@@ -771,9 +779,13 @@ char *dumptype_name(dumptype_t *dtyp);
 #define dumptype_get_application(dtyp)         (val_t_to_application(dumptype_getconf((dtyp), DUMPTYPE_APPLICATION)))
 #define dumptype_get_scriptlist(dtyp)          (val_t_to_identlist(dumptype_getconf((dtyp), DUMPTYPE_SCRIPTLIST)))
 #define dumptype_get_property(dtyp)            (val_t_to_proplist(dumptype_getconf((dtyp), DUMPTYPE_PROPERTY)))
-#define dumptype_get_client_port(dtyp)             (val_t_to_str(dumptype_getconf((dtyp), DUMPTYPE_CLIENT_PORT)))
-#define dumptype_get_data_path(dtyp)             (val_t_to_data_path(dumptype_getconf((dtyp), DUMPTYPE_DATA_PATH)))
 #define dumptype_get_allow_split(dtyp)         (val_t_to_boolean(dumptype_getconf((dtyp), DUMPTYPE_ALLOW_SPLIT)))
+#define dumptype_get_client_port(dtyp)         (val_t_to_str(dumptype_getconf((dtyp), DUMPTYPE_CLIENT_PORT)))
+#define dumptype_get_data_path(dtyp)            (val_t_to_data_path(dumptype_getconf((dtyp), DUMPTYPE_DATA_PATH)))
+#define dumptype_get_ssl_fingerprint_file(dtyp) (val_t_to_str(dumptype_getconf((dtyp), DUMPTYPE_SSL_FINGERPRINT_FILE)))
+#define dumptype_get_ssl_cert_file(dtyp)        (val_t_to_str(dumptype_getconf((dtyp), DUMPTYPE_SSL_CERT_FILE)))
+#define dumptype_get_ssl_key_file(dtyp)         (val_t_to_str(dumptype_getconf((dtyp), DUMPTYPE_SSL_KEY_FILE)))
+#define dumptype_get_ssl_ca_cert_file(dtyp)     (val_t_to_str(dumptype_getconf((dtyp), DUMPTYPE_SSL_CA_CERT_FILE)))
 
 /*
  * Interface parameter access

@@ -698,6 +698,10 @@ parse_diskline(
     disk->clnt_encrypt       = dumptype_get_clnt_encrypt(dtype);
     disk->amandad_path       = dumptype_get_amandad_path(dtype);
     disk->client_username    = dumptype_get_client_username(dtype);
+    disk->ssl_fingerprint_file= dumptype_get_ssl_fingerprint_file(dtype);
+    disk->ssl_cert_file      = dumptype_get_ssl_cert_file(dtype);
+    disk->ssl_key_file       = dumptype_get_ssl_key_file(dtype);
+    disk->ssl_ca_cert_file   = dumptype_get_ssl_ca_cert_file(dtype);
     disk->client_port        = dumptype_get_client_port(dtype);
     disk->ssh_keys           = dumptype_get_ssh_keys(dtype);
     disk->comprate[0]	     = dumptype_get_comprate(dtype)[0];

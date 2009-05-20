@@ -82,6 +82,8 @@ const security_driver_t ssh_security_driver = {
     tcpm_stream_read_cancel,
     tcpm_close_connection,
     NULL,
+    NULL,
+    NULL,
     NULL
 };
 

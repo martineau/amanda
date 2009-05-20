@@ -197,6 +197,9 @@ typedef struct security_driver {
 
     int (*data_encrypt)(void *, void *, ssize_t, void **, ssize_t *);
     int (*data_decrypt)(void *, void *, ssize_t, void **, ssize_t *);
+
+    ssize_t (*data_write)(void *, struct iovec *iov, int iovcnt);
+    ssize_t (*data_read)(void *, void *, ssize_t);
 } security_driver_t;
 
 /* Given a security type ("KRB4", "BSD", "SSH", etc), returns a pointer to that

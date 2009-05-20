@@ -193,6 +193,8 @@ const security_driver_t krb5_security_driver = {
     tcpm_close_connection,
     k5_encrypt,
     k5_decrypt,
+    NULL,
+    NULL
 };
 
 static int newhandle = 1;

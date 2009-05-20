@@ -155,6 +155,14 @@ amhost_get_security_conf(
 	return ((am_host_t *)arg)->disks->amandad_path;
     else if(strcmp(string, "client_username")==0)
 	return ((am_host_t *)arg)->disks->client_username;
+    else if(strcmp(string, "ssl_fingerprint_file")==0)
+	return ((am_host_t *)arg)->disks->ssl_fingerprint_file;
+    else if(strcmp(string, "ssl_cert_file")==0)
+	return ((am_host_t *)arg)->disks->ssl_cert_file;
+    else if(strcmp(string, "ssl_key_file")==0)
+	return ((am_host_t *)arg)->disks->ssl_key_file;
+    else if(strcmp(string, "ssl_ca_cert_file")==0)
+	return ((am_host_t *)arg)->disks->ssl_ca_cert_file;
     else if(strcmp(string, "client_port")==0)
 	return ((am_host_t *)arg)->disks->client_port;
     else if(strcmp(string, "ssh_keys")==0)

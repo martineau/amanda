@@ -472,7 +472,11 @@ tcpm_send_token(
         nb_iov = 3;
     }
 
-    rval = full_writev(fd, iov, nb_iov);
+    if (rc->driver->data_write == NULL) {
+	rval = full_writev(fd, iov, nb_iov);
+    } else {
+	rval = rc->driver->data_write(rc, iov, nb_iov);
+    }
     save_errno = errno;
     if (len != 0 && rc->driver->data_encrypt != NULL && buf != encbuf) {
 	amfree(encbuf);
@@ -504,34 +508,38 @@ tcpm_recv_token(
     char **	buf,
     ssize_t *	size)
 {
-    ssize_t     rval;
+
+    ssize_t read_bytes;
 
     assert(SIZEOF(rc->netint) == 8);
     if (rc->size_header_read < (ssize_t)SIZEOF(rc->netint)) {
-	rval = read(fd, &rc->netint + rc->size_header_read,
-		        SIZEOF(rc->netint) - rc->size_header_read);
-	if (rval == -1) {
+	if (rc->driver->data_read == NULL) {
+	    read_bytes = read(fd, &rc->netint + rc->size_header_read, SIZEOF(rc->netint) - rc->size_header_read);
+	} else {
+	    read_bytes = rc->driver->data_read(rc, &rc->netint + rc->size_header_read, SIZEOF(rc->netint) - rc->size_header_read);
+	}
+	switch (read_bytes) {
+	case -1:
 	    if (errmsg)
-		*errmsg = newvstrallocf(*errmsg, _("recv error: %s"),
-					strerror(errno));
+	*errmsg = newvstrallocf(*errmsg, _("recv error: %s"), strerror(errno));
 	    auth_debug(1, _("tcpm_recv_token: A return(-1)\n"));
-	    return(-1);
-	} else if (rval == 0) {
+	    return (-1);
+	case 0:
 	    *size = 0;
 	    *handle = H_EOF;
 	    *errmsg = newvstrallocf(*errmsg, _("SOCKET_EOF"));
 	    auth_debug(1, _("tcpm_recv_token: A return(0)\n"));
-	    return(0);
-	} else if (rval < (ssize_t)SIZEOF(rc->netint) - rc->size_header_read) {
-	    rc->size_header_read += rval;
-	    return(-2);
+	    return (0);
+	default:
+	    rc->size_header_read += read_bytes;
+	    if (rc->size_header_read < (ssize_t)SIZEOF(rc->netint)) {
+		return(-2);
+	    }
+	    break;
 	}
-	rc->size_header_read += rval;
-        amfree(rc->buffer);
+
 	*size = (ssize_t)ntohl(rc->netint[0]);
 	*handle = (int)ntohl(rc->netint[1]);
-        rc->buffer = alloc((size_t)*size);
-	rc->size_buffer_read = 0;
 
 	/* amanda protocol packet can be above NETWORK_BLOCK_BYTES */
 	if (*size > 128*NETWORK_BLOCK_BYTES || *size < 0) {
@@ -584,27 +592,35 @@ tcpm_recv_token(
 	}
     }
 
-    *size = (ssize_t)ntohl(rc->netint[0]);
-    *handle = (int)ntohl(rc->netint[1]);
+    amfree(rc->buffer);
+    rc->buffer = alloc((size_t)*size);
+    rc->size_buffer_read = 0;
 
-    rval = read(fd, rc->buffer + rc->size_buffer_read,
-		    (size_t)*size - rc->size_buffer_read);
-    if (rval == -1) {
+    if (rc->driver->data_read == NULL) {
+	read_bytes = read(fd, rc->buffer + rc->size_buffer_read, (size_t)*size - rc->size_buffer_read);
+    } else {
+	read_bytes = rc->driver->data_read(rc, rc->buffer + rc->size_buffer_read, (size_t)*size - rc->size_buffer_read);
+    }
+    switch (read_bytes) {
+    case -1:
 	if (errmsg)
 	    *errmsg = newvstrallocf(*errmsg, _("recv error: %s"),
 				    strerror(errno));
 	auth_debug(1, _("tcpm_recv_token: B return(-1)\n"));
 	return (-1);
-    } else if (rval == 0) {
+    case 0:
 	*size = 0;
 	*errmsg = newvstrallocf(*errmsg, _("SOCKET_EOF"));
 	auth_debug(1, _("tcpm_recv_token: B return(0)\n"));
 	return (0);
-    } else if (rval < (ssize_t)*size - rc->size_buffer_read) {
-	rc->size_buffer_read += rval;
-	return (-2);
+    default:
+	if (read_bytes < (ssize_t)*size - rc->size_buffer_read) {
+	    rc->size_buffer_read += read_bytes;
+	    return (-2);
+	}
+	break;
     }
-    rc->size_buffer_read += rval;
+    rc->size_buffer_read += read_bytes;
     amfree(*buf);
     *buf = rc->buffer;
     rc->size_header_read = 0;

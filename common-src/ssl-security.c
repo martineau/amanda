@@ -46,12 +46,14 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+/*
 #define RSA_CLIENT_CERT    "/home/martinea/ssl/amanda_server.crt"
 #define RSA_CLIENT_KEY     "/home/martinea/ssl/amanda_server.key"
 #define RSA_CLIENT_CA_CERT "/home/martinea/ssl/amanda_ca.crt"
 #define RSA_SERVER_CERT    "/home/martinea/ssl/amanda_client.crt"
 #define RSA_SERVER_KEY     "/home/martinea/ssl/amanda_client.key"
 #define RSA_SERVER_CA_CERT "/home/martinea/ssl/amanda_ca.crt"
+*/
 
 /*
  * Number of seconds ssl has to start up
@@ -69,6 +71,8 @@ static void ssl_accept(const struct security_driver *,
 static void ssl_connect(const char *,
     char *(*)(char *, void *),
     void (*)(void *, security_handle_t *, security_status_t), void *, void *);
+static ssize_t ssl_data_write(void *c, struct iovec *iov, int iovcnt);
+static ssize_t ssl_data_read(void *c, void *bug, ssize_t size);
 
 /*
  * This is our interface to the outside world.
@@ -93,7 +97,9 @@ const security_driver_t ssl_security_driver = {
     tcpm_stream_read_cancel,
     tcpm_close_connection,
     NULL,
-    NULL
+    NULL,
+    ssl_data_write,
+    ssl_data_read
 };
 
 static int newhandle = 1;
@@ -101,7 +107,9 @@ static int newhandle = 1;
 /*
  * Local functions
  */
-static int runssl(struct sec_handle *, in_port_t port);
+static int runssl(struct sec_handle *, in_port_t port,
+                  char *ssl_fingerprint_file, char *ssl_cert_file,
+                  char *ssl_key_file, char *ssl_ca_cert_file);
 
 
 /*
@@ -121,11 +129,13 @@ ssl_connect(
     char *canonname;
     char *service;
     in_port_t port;
+    char *ssl_fingerprint_file = NULL;
+    char *ssl_cert_file = NULL;
+    char *ssl_key_file = NULL;
+    char *ssl_ca_cert_file = NULL;
 
     assert(fn != NULL);
     assert(hostname != NULL);
-    (void)conf_fn;	/* Quiet unused parameter warning */
-    (void)datap;	/* Quiet unused parameter warning */
 
     auth_debug(1, _("ssl: ssl_connect: %s\n"), hostname);
 
@@ -168,6 +178,10 @@ ssl_connect(
 	service = conf_fn("client_port", datap);
 	if (strlen(service) <= 1)
 	    service = "amanda";
+	ssl_fingerprint_file = conf_fn("ssl_fingerprint_file", datap);
+	ssl_cert_file        = conf_fn("ssl_cert_file", datap);
+	ssl_key_file         = conf_fn("ssl_key_file", datap);
+	ssl_ca_cert_file     = conf_fn("ssl_ca_cert_file", datap);
     } else {
 	service = "amanda";
     }
@@ -183,7 +197,7 @@ ssl_connect(
      * XXX need to eventually limit number of outgoing connections here.
      */
     if(rh->rc->read == -1) {
-	if (runssl(rh, port) < 0)
+	if (runssl(rh, port, ssl_fingerprint_file, ssl_cert_file, ssl_key_file, ssl_ca_cert_file) < 0)
 	    goto error;
 	rh->rc->refcnt++;
     }
@@ -210,6 +224,7 @@ error:
 }
 
 char *validate_fingerprint(X509 *cert, char *fingerprint);
+char *validate_fingerprints(X509 *cert, char *ssl_fingerprint_file);
 
 char *validate_fingerprint(
     X509 *cert,
@@ -241,10 +256,45 @@ char *validate_fingerprint(
     *fp = '\0';
 
     if (strcasecmp(new_fingerprint, fingerprint)!= 0) {
-	return g_strdup("fingerprint differ");
+	return g_strdup_printf("fingerprint differ %s %s", new_fingerprint, fingerprint);
     }
     amfree(new_fingerprint);
     return NULL;
+}
+
+char *validate_fingerprints(
+    X509 *cert,
+    char *ssl_fingerprint_file)
+{
+    FILE *fingers;
+    char fingerprint[32768];
+    char *errmsg = NULL;
+
+    if (ssl_fingerprint_file == NULL || *ssl_fingerprint_file == '\0') {
+dbprintf("No fingerprint_file set\n");
+	return NULL;
+    }
+
+    fingers = fopen(ssl_fingerprint_file, "r");
+    if (!fingers) {
+	errmsg = g_strdup_printf("Failed open of %s: %s",
+				 ssl_fingerprint_file, strerror(errno));
+dbprintf("%s\n", errmsg);
+	return errmsg;
+    }
+    while (fgets(fingerprint, 32768, fingers) != NULL) {
+	int len = strlen(fingerprint)-1;
+	if (len > 0 && fingerprint[len] == '\n')
+	    fingerprint[len] = '\0';
+	amfree(errmsg);
+	errmsg = validate_fingerprint(cert, fingerprint);
+	if (errmsg == NULL) {
+dbprintf("Fingerprint '%s' match\n", fingerprint);
+	    return NULL;
+	}
+dbprintf("Fingerprint '%s' doesn't match: %s\n", fingerprint, errmsg);
+    }
+    return errmsg;
 }
 
 /*
@@ -267,7 +317,12 @@ ssl_accept(
     char *errmsg = NULL;
     int   err;
     X509 *client_cert;
+    char *ssl_fingerprint_file = conf_fn("ssl_fingerprint_file", datap);
+    char *ssl_cert_file        = conf_fn("ssl_cert_file", datap);
+    char *ssl_key_file         = conf_fn("ssl_key_file", datap);
+    char *ssl_ca_cert_file     = conf_fn("ssl_ca_cert_file", datap);
 
+dbprintf("ssl_accept\n");
     len = sizeof(sin);
     if (getpeername(in, (struct sockaddr *)&sin, &len) < 0) {
 	dbprintf(_("getpeername returned: %s\n"), strerror(errno));
@@ -308,32 +363,53 @@ ssl_accept(
     /* Create a SSL_CTX structure */
     rc->ctx = SSL_CTX_new(rc->meth);
     if (!rc->ctx) {
-//	security_seterror(&rh->sech, "%s",
-//			  ERR_error_string(ERR_get_error(), NULL));
+	dbprintf(_("SSL_CTX_new failed: %s\n"),
+		 ERR_error_string(ERR_get_error(), NULL));
+	return;
+    }
+    SSL_CTX_set_mode(rc->ctx, SSL_MODE_AUTO_RETRY);
+
+dbprintf("ssl_accept 3\n");
+    if (ssl_cert_file && *ssl_cert_file != '\0') {
+dbprintf("load cert file\n");
+        /* Load the server certificate into the SSL_CTX structure */
+        if (SSL_CTX_use_certificate_file(rc->ctx, ssl_cert_file,
+				         SSL_FILETYPE_PEM) <= 0) {
+	dbprintf(_("Load ssl-cert-file failed:%s\n"),
+		 ERR_error_string(ERR_get_error(), NULL));
+	    return;
+        }
+    } else {
+	dbprintf("No ssl-cert-file set\n");
 	return;
     }
 
-    /* Load the server certificate into the SSL_CTX structure */
-    if (SSL_CTX_use_certificate_file(rc->ctx, RSA_SERVER_CERT,
-				     SSL_FILETYPE_PEM) <= 0) {
-//	security_seterror(&rh->sech, "%s",
-//			  ERR_error_string(ERR_get_error(), NULL));
+dbprintf("ssl_accept 4\n");
+    if (ssl_key_file && *ssl_key_file != '\0') {
+dbprintf("load key file\n");
+        /* Load the private-key corresponding to the server certificate */
+        if (SSL_CTX_use_PrivateKey_file(rc->ctx, ssl_key_file,
+				        SSL_FILETYPE_PEM) <= 0) {
+	dbprintf(_("Load ssl-key-file failed: %s\n"),
+		 ERR_error_string(ERR_get_error(), NULL));
+	    return;
+        }
+    } else {
+	dbprintf(_("No ssl-key-file set\n"));
 	return;
     }
 
-    /* Load the private-key corresponding to the server certificate */
-    if (SSL_CTX_use_PrivateKey_file(rc->ctx, RSA_SERVER_KEY,
-				    SSL_FILETYPE_PEM) <= 0) {
-//	security_seterror(&rh->sech, "%s",
-//			  ERR_error_string(ERR_get_error(), NULL));
-	return;
-    }
-
-if(1) {
-    /* Load the RSA CA certificate into the SSL_CTX structure */
-    if (!SSL_CTX_load_verify_locations(rc->ctx, RSA_SERVER_CA_CERT, NULL)) {
-//	security_seterror(&rh->sech, "%s",
-//			  ERR_error_string(ERR_get_error(), NULL));
+dbprintf("ssl_accept 5\n");
+    if (ssl_ca_cert_file && *ssl_ca_cert_file != '\0') {
+dbprintf("load ca cert file\n");
+        /* Load the RSA CA certificate into the SSL_CTX structure */
+        if (!SSL_CTX_load_verify_locations(rc->ctx, ssl_ca_cert_file, NULL)) {
+	    dbprintf(_("Load ssl-ca-cert-file failed: %s\n"),
+		     ERR_error_string(ERR_get_error(), NULL));
+	    return;
+        }
+    } else if (!ssl_fingerprint_file || *ssl_fingerprint_file == '\0') {
+	dbprintf(_("No ssl-ca-cert-file or ssl-fingerprint-file set\n"));
 	return;
     }
 
@@ -342,13 +418,14 @@ if(1) {
 
     /* Set the verification depth to 1 */
     SSL_CTX_set_verify_depth(rc->ctx,1);
-}
 
     rc->ssl = SSL_new(rc->ctx);
     if (!rc->ssl) {
-//	security_seterror(&rh->sech, _("SSL_new failed"));
-//	return;
+	dbprintf(_("SSL_new failed: %s\n"),
+		 ERR_error_string(ERR_get_error(), NULL));
+	return;
     }
+    SSL_set_accept_state(rc->ssl);
 
     /* Assign the socket into the SSL structure (SSL and socket without BIO) */
     SSL_set_fd(rc->ssl, in);
@@ -356,48 +433,28 @@ if(1) {
     /* Perform SSL Handshake on the SSL server */
     err = SSL_accept(rc->ssl);
     if (err == -1) {
-//	security_seterror(&rh->sech, "%s",
-//			  ERR_error_string(ERR_get_error(), NULL));
+	dbprintf(_("SSL_accept failed: %s\n"),
+		 ERR_error_string(ERR_get_error(), NULL));
 	return;
     }
 
     /* Get the server's certificate (optional) */
     client_cert = SSL_get_peer_certificate (rc->ssl);
 
-if (1) {
     if (client_cert == NULL) {
-//	security_seterror(&rh->sech, _("client have no certificate"));
+	dbprintf(_("client have no certificate\n"));
 	return;
     } else {
-        char *str = X509_NAME_oneline(X509_get_subject_name(client_cert),0,0);
-	char cname[256];
-        dbprintf("\t subject: %s\n", str);
-        free (str);
- 
-        str = X509_NAME_oneline(X509_get_issuer_name(client_cert),0,0);
-        dbprintf("\t issuer: %s\n", str);
-        free(str);
+        char *str;
 
-	X509_NAME_get_text_by_NID(X509_get_subject_name (client_cert),
-				  NID_commonName, cname, 256);
-	if (strcasecmp(cname, "Jean-Louis") != 0) {
-//	    security_seterror(&rh->sech,
-//			      _("Invalid common name in certificate"));
-	    return;
-	}
-
-	str = validate_fingerprint(client_cert, 
-			"00:95:1C:47:F8:55:66:87:69:59:A7:53:A6:69:11:45");
+	str = validate_fingerprints(client_cert, ssl_fingerprint_file);
 	if (str) {
 	    dbprintf("%s\n", str);
 	    amfree(str);
 	    return;
 	}
-	X509_free (client_cert);
+	X509_free(client_cert);
     }
-}
-
-
     sec_tcp_conn_read(rc);
 }
 
@@ -408,7 +465,11 @@ if (1) {
 static int
 runssl(
     struct sec_handle *	rh,
-    in_port_t port)
+    in_port_t port,
+    char *ssl_fingerprint_file,
+    char *ssl_cert_file,
+    char *ssl_key_file,
+    char *ssl_ca_cert_file)
 {
     int		     server_socket;
     in_port_t	     my_port;
@@ -457,22 +518,33 @@ runssl(
 			  ERR_error_string(ERR_get_error(), NULL));
 	return -1;
     }
+    SSL_CTX_set_mode(rc->ctx, SSL_MODE_AUTO_RETRY);
 
-/* Should we validate client certificate */
-if (1) {
-    /* Load the client certificate into the SSL_CTX structure */
-    if (SSL_CTX_use_certificate_file(rc->ctx, RSA_CLIENT_CERT,
-				     SSL_FILETYPE_PEM) <= 0) {
-	security_seterror(&rh->sech, "%s",
-			  ERR_error_string(ERR_get_error(), NULL));
+    if (ssl_cert_file && *ssl_cert_file != '\0') {
+dbprintf("load cert file\n");
+        /* Load the client certificate into the SSL_CTX structure */
+        if (SSL_CTX_use_certificate_file(rc->ctx, ssl_cert_file,
+				         SSL_FILETYPE_PEM) <= 0) {
+	    security_seterror(&rh->sech, "%s",
+			      ERR_error_string(ERR_get_error(), NULL));
+	    return -1;
+        }
+    } else {
+	security_seterror(&rh->sech, "no ssl-cert-file defined");
 	return -1;
     }
 
-    /* Load the private-key corresponding to the client certificate */
-    if (SSL_CTX_use_PrivateKey_file(rc->ctx, RSA_CLIENT_KEY,
-				    SSL_FILETYPE_PEM) <= 0) {
-	security_seterror(&rh->sech, "%s",
-			  ERR_error_string(ERR_get_error(), NULL));
+    if (ssl_key_file && *ssl_key_file != '\0') {
+dbprintf("load key file\n");
+        /* Load the private-key corresponding to the client certificate */
+        if (SSL_CTX_use_PrivateKey_file(rc->ctx, ssl_key_file,
+				        SSL_FILETYPE_PEM) <= 0) {
+	    security_seterror(&rh->sech, "%s",
+			      ERR_error_string(ERR_get_error(), NULL));
+	    return -1;
+        }
+    } else {
+	security_seterror(&rh->sech, "no ssl-key-file defined");
 	return -1;
     }
 
@@ -482,14 +554,20 @@ if (1) {
 		_("Private key does not match the certificate public key"));
 	return -1;
     }
-}
 
-    /* Load the RSA CA certificate into the SSL_CTX structure */
-    /* This will allow this client to verify the server's     */
-    /* certificate.                                           */
-    if (!SSL_CTX_load_verify_locations(rc->ctx, RSA_CLIENT_CA_CERT, NULL)) {
-	security_seterror(&rh->sech, "%s",
-			  ERR_error_string(ERR_get_error(), NULL));
+    if (ssl_ca_cert_file && *ssl_ca_cert_file != '\0') {
+dbprintf("load ca cert file\n");
+        /* Load the RSA CA certificate into the SSL_CTX structure */
+        /* This will allow this client to verify the server's     */
+        /* certificate.                                           */
+        if (!SSL_CTX_load_verify_locations(rc->ctx, ssl_ca_cert_file, NULL)) {
+	    security_seterror(&rh->sech, "%s",
+			      ERR_error_string(ERR_get_error(), NULL));
+	    return -1;
+        }
+    } else if (!ssl_fingerprint_file || *ssl_fingerprint_file == '\0') {
+	security_seterror(&rh->sech,
+		_("ssl-ca-cert-file or ssl-fingerprint-file must be set."));
 	return -1;
     }
 
@@ -504,6 +582,7 @@ if (1) {
 	security_seterror(&rh->sech, _("SSL_new failed"));
 	return -1;
     }
+    SSL_set_connect_state(rc->ssl);
 
     /* Assign the socket into the SSL structure (SSL and socket without BIO) */
     SSL_set_fd(rc->ssl, server_socket);
@@ -539,9 +618,8 @@ if (1) {
 			      _("Invalid common name in certificate"));
 	    return -1;
 	}
-	
-	str = validate_fingerprint(server_cert, 
-			"A1:19:94:28:7F:E8:FA:FC:97:E2:7E:41:AD:61:AE:C2");
+
+	str = validate_fingerprints(server_cert, ssl_fingerprint_file);
 	if (str) {
 	    security_seterror(&rh->sech, "%s", str);
 	    amfree(str);
@@ -552,4 +630,43 @@ if (1) {
     }
     
     return 0;
+}
+
+static ssize_t
+ssl_data_write(
+    void         *c,
+    struct iovec *iov,
+    int           iovcnt)
+{
+    struct tcp_conn *rc = c;
+    int              i;
+    int              size;
+
+dbprintf("ssl_data_write\n");
+    size = 0;
+    for (i=0; i < iovcnt; i++) {
+	size += SSL_write(rc->ssl, iov[i].iov_base, iov[i].iov_len);
+    }
+dbprintf("ssl_data_write %d\n", size);
+    return size;
+    //return full_writev(rc->write, iov, iovcnt);
+}
+
+static ssize_t
+ssl_data_read(
+    void    *c,
+    void    *buf,
+    ssize_t  size)
+{
+    struct tcp_conn *rc = c;
+    int              result;
+
+dbprintf("ssl_data_read:: %d\n", (int)size);
+//    return net_read(rc->read, buf, size, 0);
+    result = 0;
+    while(result < size) {
+        result += SSL_read(rc->ssl, buf+result, size-result);
+    }
+dbprintf("ssl_data_read %d\n", result);
+    return result;
 }

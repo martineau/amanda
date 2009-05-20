@@ -1938,7 +1938,10 @@ amandad_get_security_conf(
 	    return ("yes");
 	else
 	    return (NULL);
+    } else {
+	return generic_client_get_security_conf(string, arg);
     }
+
     return(NULL);
 }
 

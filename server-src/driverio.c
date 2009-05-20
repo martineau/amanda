@@ -566,6 +566,8 @@ dumper_cmd(
     char   *mesg)
 {
     char *cmdline = NULL;
+    char *cmdline1;
+    char *cmdline2;
     char number[NUM_STR_SIZE];
     char numberport[NUM_STR_SIZE];
     char *o;
@@ -592,6 +594,10 @@ dumper_cmd(
 	    char *qplugin;
 	    char *qamandad_path;
 	    char *qclient_username;
+	    char *qssl_fingerprint_file;
+	    char *qssl_cert_file;
+	    char *qssl_key_file;
+	    char *qssl_ca_cert_file;
 	    char *qclient_port;
 	    char *qssh_keys;
 
@@ -629,11 +635,15 @@ dumper_cmd(
 	    qplugin = quote_string(plugin);
 	    qamandad_path = quote_string(dp->amandad_path);
 	    qclient_username = quote_string(dp->client_username);
+	    qssl_fingerprint_file = quote_string(dp->ssl_fingerprint_file);
+	    qssl_cert_file = quote_string(dp->ssl_cert_file);
+	    qssl_key_file = quote_string(dp->ssl_key_file);
+	    qssl_ca_cert_file = quote_string(dp->ssl_ca_cert_file);
 	    qclient_port = quote_string(dp->client_port);
 	    qssh_keys = quote_string(dp->ssh_keys);
 	    dbprintf("security_driver %s\n", dp->auth);
 
-	    cmdline = vstralloc(cmdstr[cmd],
+	    cmdline1 = vstralloc(cmdstr[cmd],
 			    " ", disk2serial(dp),
 			    " ", numberport,
 			    " ", dp->host->hostname,
@@ -642,9 +652,14 @@ dumper_cmd(
 			    " ", device,
 			    " ", number,
 			    " ", sched(dp)->dumpdate,
-			    " ", qplugin,
+			    " ", qplugin, NULL);
+	    cmdline2 = vstralloc(
 			    " ", qamandad_path,
 			    " ", qclient_username,
+			    " ", qssl_fingerprint_file,
+			    " ", qssl_cert_file,
+			    " ", qssl_key_file,
+			    " ", qssl_ca_cert_file,
 			    " ", qclient_port,
 			    " ", qssh_keys,
 			    " ", dp->auth,
@@ -652,6 +667,9 @@ dumper_cmd(
 			    " ", dp->dataport_list,
 			    " |", o,
 			    "\n", NULL);
+	    cmdline = stralloc2(cmdline1, cmdline2);
+	    amfree(cmdline1);
+	    amfree(cmdline2);
 	    amfree(qplugin);
 	    amfree(qamandad_path);
 	    amfree(qclient_username);
