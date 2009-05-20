@@ -262,7 +262,7 @@ char *validate_fingerprints(
     char *errmsg = NULL;
 
     if (ssl_fingerprint_file == NULL || *ssl_fingerprint_file == '\0') {
-dbprintf("No fingerprint_file set\n");
+	dbprintf("No fingerprint_file set\n");
 	return NULL;
     }
 
@@ -270,7 +270,7 @@ dbprintf("No fingerprint_file set\n");
     if (!fingers) {
 	errmsg = g_strdup_printf("Failed open of %s: %s",
 				 ssl_fingerprint_file, strerror(errno));
-dbprintf("%s\n", errmsg);
+	dbprintf("%s\n", errmsg);
 	return errmsg;
     }
     while (fgets(fingerprint, 32768, fingers) != NULL) {
@@ -280,10 +280,10 @@ dbprintf("%s\n", errmsg);
 	amfree(errmsg);
 	errmsg = validate_fingerprint(cert, fingerprint);
 	if (errmsg == NULL) {
-dbprintf("Fingerprint '%s' match\n", fingerprint);
+	    dbprintf("Fingerprint '%s' match\n", fingerprint);
 	    return NULL;
 	}
-dbprintf("Fingerprint '%s' doesn't match: %s\n", fingerprint, errmsg);
+	dbprintf("Fingerprint '%s' doesn't match: %s\n", fingerprint, errmsg);
     }
     return errmsg;
 }
@@ -313,7 +313,6 @@ ssl_accept(
     char *ssl_key_file         = conf_fn("ssl_key_file", datap);
     char *ssl_ca_cert_file     = conf_fn("ssl_ca_cert_file", datap);
 
-dbprintf("ssl_accept\n");
     len = sizeof(sin);
     if (getpeername(in, (struct sockaddr *)&sin, &len) < 0) {
 	dbprintf(_("getpeername returned: %s\n"), strerror(errno));
@@ -360,9 +359,7 @@ dbprintf("ssl_accept\n");
     }
     SSL_CTX_set_mode(rc->ctx, SSL_MODE_AUTO_RETRY);
 
-dbprintf("ssl_accept 3\n");
     if (ssl_cert_file && *ssl_cert_file != '\0') {
-dbprintf("load cert file\n");
         /* Load the server certificate into the SSL_CTX structure */
         if (SSL_CTX_use_certificate_file(rc->ctx, ssl_cert_file,
 				         SSL_FILETYPE_PEM) <= 0) {
@@ -375,9 +372,7 @@ dbprintf("load cert file\n");
 	return;
     }
 
-dbprintf("ssl_accept 4\n");
     if (ssl_key_file && *ssl_key_file != '\0') {
-dbprintf("load key file\n");
         /* Load the private-key corresponding to the server certificate */
         if (SSL_CTX_use_PrivateKey_file(rc->ctx, ssl_key_file,
 				        SSL_FILETYPE_PEM) <= 0) {
@@ -390,9 +385,7 @@ dbprintf("load key file\n");
 	return;
     }
 
-dbprintf("ssl_accept 5\n");
     if (ssl_ca_cert_file && *ssl_ca_cert_file != '\0') {
-dbprintf("load ca cert file\n");
         /* Load the RSA CA certificate into the SSL_CTX structure */
         if (!SSL_CTX_load_verify_locations(rc->ctx, ssl_ca_cert_file, NULL)) {
 	    dbprintf(_("Load ssl-ca-cert-file failed: %s\n"),
@@ -520,7 +513,6 @@ runssl(
     SSL_CTX_set_mode(rc->ctx, SSL_MODE_AUTO_RETRY);
 
     if (ssl_cert_file && *ssl_cert_file != '\0') {
-dbprintf("load cert file\n");
         /* Load the client certificate into the SSL_CTX structure */
         if (SSL_CTX_use_certificate_file(rc->ctx, ssl_cert_file,
 				         SSL_FILETYPE_PEM) <= 0) {
@@ -534,7 +526,6 @@ dbprintf("load cert file\n");
     }
 
     if (ssl_key_file && *ssl_key_file != '\0') {
-dbprintf("load key file\n");
         /* Load the private-key corresponding to the client certificate */
         if (SSL_CTX_use_PrivateKey_file(rc->ctx, ssl_key_file,
 				        SSL_FILETYPE_PEM) <= 0) {
@@ -555,7 +546,6 @@ dbprintf("load key file\n");
     }
 
     if (ssl_ca_cert_file && *ssl_ca_cert_file != '\0') {
-dbprintf("load ca cert file\n");
         /* Load the RSA CA certificate into the SSL_CTX structure */
         /* This will allow this client to verify the server's     */
         /* certificate.                                           */
@@ -634,12 +624,10 @@ ssl_data_write(
     int              i;
     int              size;
 
-dbprintf("ssl_data_write\n");
     size = 0;
     for (i=0; i < iovcnt; i++) {
 	size += SSL_write(rc->ssl, iov[i].iov_base, iov[i].iov_len);
     }
-dbprintf("ssl_data_write %d\n", size);
     return size;
     //return full_writev(rc->write, iov, iovcnt);
 }
@@ -651,14 +639,19 @@ ssl_data_read(
     ssize_t  size)
 {
     struct tcp_conn *rc = c;
-    int              result;
+    int              result = 0;
+    int              out_size;
 
-dbprintf("ssl_data_read:: %d\n", (int)size);
-//    return net_read(rc->read, buf, size, 0);
-    result = 0;
-    while(result < size) {
-        result += SSL_read(rc->ssl, buf+result, size-result);
+    out_size = 0;
+    while(out_size < size) {
+        result = SSL_read(rc->ssl, buf+result, size-result);
+	if (result > 0)
+	    out_size += result;
+	else if (out_size > 0)
+	    return out_size;
+	else
+	    return result;
     }
-dbprintf("ssl_data_read %d\n", result);
     return result;
+//    return net_read(rc->read, buf, size, 0);
 }
