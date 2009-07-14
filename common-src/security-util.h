@@ -89,7 +89,8 @@ struct tcp_conn {
     int			event_id;		/* event ID fired when token read */
     void		(*accept_fn)(security_handle_t *, pkt_t *);
     sockaddr_union	peer;
-    int			(*recv_security_ok)(struct sec_handle *, pkt_t *);
+    int			(*recv_security_ok)(struct sec_handle *, pkt_t *, int);
+    int			need_priv_port;
     char *		(*prefix_packet)(void *, pkt_t *);
     int			toclose;
     int			donotclose;
@@ -139,7 +140,7 @@ struct sec_handle {
     struct sec_handle *	next;
     struct udp_handle *	udp;
     void		(*accept_fn)(security_handle_t *, pkt_t *);
-    int			(*recv_security_ok)(struct sec_handle *, pkt_t *);
+//    int			(*recv_security_ok)(struct sec_handle *, pkt_t *, int);
 };
 
 /*
@@ -176,8 +177,9 @@ typedef struct udp_handle {
     int refcnt;			/* number of handles blocked for reading */
     struct sec_handle *bh_first, *bh_last;
     void (*accept_fn)(security_handle_t *, pkt_t *);
-    int (*recv_security_ok)(struct sec_handle *, pkt_t *);
+    int (*recv_security_ok)(struct sec_handle *, pkt_t *, int);
     char *(*prefix_packet)(void *, pkt_t *);
+    int			need_priv_port;
 } udp_handle_t;
 
 /*
@@ -232,9 +234,9 @@ int	tcpm_stream_write(void *, const void *, size_t);
 void	tcpm_stream_read(void *, void (*)(void *, void *, ssize_t), void *);
 ssize_t	tcpm_stream_read_sync(void *, void **);
 void	tcpm_stream_read_cancel(void *);
-ssize_t	tcpm_send_token(struct tcp_conn *, int, int, char **, const void *, size_t);
-ssize_t	tcpm_recv_token_timeout(struct tcp_conn *, int, int *, char **, char **, ssize_t *, int);
-ssize_t	tcpm_recv_token(struct tcp_conn *, int, int *, char **, char **, ssize_t *);
+ssize_t	tcpm_send_token(struct tcp_conn *, int, char **, const void *, size_t);
+ssize_t	tcpm_recv_token_timeout(struct tcp_conn *, int *, char **, char **, ssize_t *, int);
+ssize_t	tcpm_recv_token(struct tcp_conn *, int *, char **, char **, ssize_t *);
 void	tcpm_close_connection(void *, char *);
 
 int	tcpma_stream_accept(void *);
@@ -249,7 +251,7 @@ void *	tcp1_stream_client(void *, int);
 int	tcp_stream_write(void *, const void *, size_t);
 
 char *	bsd_prefix_packet(void *, pkt_t *);
-int	bsd_recv_security_ok(struct sec_handle *, pkt_t *);
+int	bsd_recv_security_ok(struct sec_handle *, pkt_t *, int);
 
 ssize_t	udpbsd_sendpkt(void *, pkt_t *);
 void	udp_close(void *);
@@ -285,6 +287,8 @@ void	show_stat_info(char *a, char *b);
 int     check_name_give_sockaddr(const char *hostname, struct sockaddr *addr,
 				 char **errstr);
 in_port_t find_port_for_service(char *service, char *proto);
+ssize_t generic_data_write(void *, struct iovec *iov, int iovcnt);
+ssize_t generic_data_read(void *, void *vbuf, size_t sizebuf);
 
 
 #endif /* _SECURITY_INFO_H */

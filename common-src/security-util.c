@@ -319,7 +319,7 @@ tcpm_stream_write(
 		   size, rs->rc->hostname, rs->handle,
 		   rs->rc->write);
 
-    if (tcpm_send_token(rs->rc, rs->rc->write, rs->handle, &rs->rc->errmsg,
+    if (tcpm_send_token(rs->rc, rs->handle, &rs->rc->errmsg,
 			     buf, size)) {
 	security_stream_seterror(&rs->secstr, "%s", rs->rc->errmsg);
 	return (-1);
@@ -412,7 +412,6 @@ tcpm_stream_read_cancel(
 ssize_t
 tcpm_send_token(
     struct tcp_conn *rc,
-    int		fd,
     int		handle,
     char **	errmsg,
     const void *buf,
@@ -472,11 +471,7 @@ tcpm_send_token(
         nb_iov = 3;
     }
 
-    if (rc->driver->data_write == NULL) {
-	rval = full_writev(fd, iov, nb_iov);
-    } else {
-	rval = rc->driver->data_write(rc, iov, nb_iov);
-    }
+    rval = rc->driver->data_write(rc, iov, nb_iov);
     save_errno = errno;
     if (len != 0 && rc->driver->data_encrypt != NULL && buf != encbuf) {
 	amfree(encbuf);
@@ -502,7 +497,6 @@ tcpm_send_token(
 ssize_t
 tcpm_recv_token(
     struct tcp_conn    *rc,
-    int		fd,
     int *	handle,
     char **	errmsg,
     char **	buf,
@@ -513,11 +507,7 @@ tcpm_recv_token(
 
     assert(SIZEOF(rc->netint) == 8);
     if (rc->size_header_read < (ssize_t)SIZEOF(rc->netint)) {
-	if (rc->driver->data_read == NULL) {
-	    read_bytes = read(fd, &rc->netint + rc->size_header_read, SIZEOF(rc->netint) - rc->size_header_read);
-	} else {
-	    read_bytes = rc->driver->data_read(rc, &rc->netint + rc->size_header_read, SIZEOF(rc->netint) - rc->size_header_read);
-	}
+	read_bytes = rc->driver->data_read(rc, &rc->netint + rc->size_header_read, SIZEOF(rc->netint) - rc->size_header_read);
 	switch (read_bytes) {
 	case -1:
 	    if (errmsg)
@@ -563,7 +553,7 @@ tcpm_recv_token(
 		s[7] = (*handle      ) & 0xFF;
 		i = 8; s[i] = ' ';
 		while(i<100 && isprint((int)s[i]) && s[i] != '\n') {
-		    switch(net_read(fd, &s[i], 1, 0)) {
+		    switch(net_read(rc->read, &s[i], 1, 0)) {
 		    case -1: s[i] = '\0'; break;
 		    case  0: s[i] = '\0'; break;
 		    default:
@@ -590,17 +580,12 @@ tcpm_recv_token(
 	    rc->size_header_read = 0;
 	    return 0;
 	}
+	amfree(rc->buffer);
+	rc->buffer = alloc((size_t)*size);
+	rc->size_buffer_read = 0;
     }
 
-    amfree(rc->buffer);
-    rc->buffer = alloc((size_t)*size);
-    rc->size_buffer_read = 0;
-
-    if (rc->driver->data_read == NULL) {
-	read_bytes = read(fd, rc->buffer + rc->size_buffer_read, (size_t)*size - rc->size_buffer_read);
-    } else {
-	read_bytes = rc->driver->data_read(rc, rc->buffer + rc->size_buffer_read, (size_t)*size - rc->size_buffer_read);
-    }
+    read_bytes = rc->driver->data_read(rc, rc->buffer + rc->size_buffer_read, (size_t)*size - rc->size_buffer_read);
     switch (read_bytes) {
     case -1:
 	if (errmsg)
@@ -957,7 +942,8 @@ bsd_prefix_packet(
 int
 bsd_recv_security_ok(
     struct sec_handle *	rh,
-    pkt_t *		pkt)
+    pkt_t *		pkt,
+    int                 need_priv_port)
 {
     char *tok, *security, *body, *result;
     char *service = NULL, *serviceX, *serviceY;
@@ -1015,8 +1001,8 @@ bsd_recv_security_ok(
 	/*
 	 * Request packets must come from a reserved port
 	 */
-    port = SU_GET_PORT(&rh->peer);
-	if (port >= IPPORT_RESERVED) {
+	port = SU_GET_PORT(&rh->peer);
+	if (need_priv_port && port >= IPPORT_RESERVED) {
 	    security_seterror(&rh->sech,
 		_("host %s: port %u not secure"), rh->hostname,
 		(unsigned int)port);
@@ -1292,7 +1278,7 @@ udp_recvpkt_callback(
      * to the packet handling function instead of a packet.
      */
     if (rh->udp->recv_security_ok &&
-	rh->udp->recv_security_ok(rh, &rh->udp->pkt) < 0) {
+	rh->udp->recv_security_ok(rh, &rh->udp->pkt, rh->udp->need_priv_port) < 0) {
 	(*fn)(arg, NULL, S_ERROR);
     } else {
 	(*fn)(arg, &rh->udp->pkt, S_OK);
@@ -1465,7 +1451,7 @@ udp_netfd_read_callback(
      * Check the security of the packet.  If it is bad, then pass NULL
      * to the accept function instead of a packet.
      */
-    if (rh->udp->recv_security_ok(rh, &udp->pkt) < 0)
+    if (rh->udp->recv_security_ok(rh, &udp->pkt, rh->udp->need_priv_port) < 0)
 	(*udp->accept_fn)(&rh->sech, NULL);
     else
 	(*udp->accept_fn)(&rh->sech, &udp->pkt);
@@ -1654,7 +1640,7 @@ recvpkt_callback(
 	  _("sec: received %s packet (%d) from %s, contains:\n\n\"%s\"\n\n"),
 	   pkt_type2str(pkt.type), pkt.type,
 	   rh->hostname, pkt.body);
-    if (rh->rc->recv_security_ok && (rh->rc->recv_security_ok)(rh, &pkt) < 0)
+    if (rh->rc->recv_security_ok && (rh->rc->recv_security_ok)(rh, &pkt, rh->rc->need_priv_port) < 0)
 	(*rh->fn.recvpkt)(rh->arg, NULL, S_ERROR);
     else
 	(*rh->fn.recvpkt)(rh->arg, &pkt, S_OK);
@@ -1786,7 +1772,7 @@ sec_tcp_conn_read_callback(
     auth_debug(1, _("sec: conn_read_callback\n"));
 
     /* Read the data off the wire.  If we get errors, shut down. */
-    rval = tcpm_recv_token(rc, rc->read, &rc->handle, &rc->errmsg, &rc->pkt,
+    rval = tcpm_recv_token(rc, &rc->handle, &rc->errmsg, &rc->pkt,
 				&rc->pktlen);
     auth_debug(1, _("sec: conn_read_callback: tcpm_recv_token returned %zd\n"),
 		   rval);
@@ -1854,7 +1840,7 @@ sec_tcp_conn_read_callback(
     pkt.body = NULL;
     parse_pkt(&pkt, rc->pkt, (size_t)rc->pktlen);
     auth_debug(1, _("sec: calling accept_fn\n"));
-    if (rh->rc->recv_security_ok && (rh->rc->recv_security_ok)(rh, &pkt) < 0)
+    if (rh->rc->recv_security_ok && (rh->rc->recv_security_ok)(rh, &pkt, rh->rc->need_priv_port) < 0)
 	(*rc->accept_fn)(&rh->sech, NULL);
     else
 	(*rc->accept_fn)(&rh->sech, &pkt);
@@ -2669,4 +2655,24 @@ find_port_for_service(
     }
 
     return port;
+}
+
+ssize_t
+generic_data_write(
+    void         *cookie,
+    struct iovec *iov,
+    int           iovcnt)
+{
+    struct tcp_conn *rc = cookie;
+    return full_writev(rc->write, iov, iovcnt);
+}
+
+ssize_t
+generic_data_read(
+    void   *cookie,
+    void   *vbuf,
+    size_t  sizebuf)
+{
+    struct tcp_conn *rc = cookie;
+    return read(rc->read, vbuf, sizebuf);
 }

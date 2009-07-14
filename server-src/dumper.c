@@ -2207,41 +2207,43 @@ connect_error:
 
 static char *
 dumper_get_security_conf(
-    char *	string,
-    void *	arg)
+    char *string,
+    void *arg G_GNUC_UNUSED)
 {
-        (void)arg;	/* Quiet unused parameter warning */
+	char *result = NULL;
 
         if(!string || !*string)
                 return(NULL);
 
         if(strcmp(string, "krb5principal")==0) {
-                return(getconf_str(CNF_KRB5PRINCIPAL));
+                result = getconf_str(CNF_KRB5PRINCIPAL);
         } else if(strcmp(string, "krb5keytab")==0) {
-                return(getconf_str(CNF_KRB5KEYTAB));
+                result = getconf_str(CNF_KRB5KEYTAB);
         } else if(strcmp(string, "amandad_path")==0) {
-                return (amandad_path);
+                result = amandad_path;
         } else if(strcmp(string, "client_username")==0) {
-                return (client_username);
+                result = client_username;
         } else if(strcmp(string, "ssl_fingerprint_file")==0) {
-                return (ssl_fingerprint_file);
+                result = ssl_fingerprint_file;
         } else if(strcmp(string, "ssl_cert_file")==0) {
-                return (ssl_cert_file);
+                result = ssl_cert_file;
         } else if(strcmp(string, "ssl_key_file")==0) {
-                return (ssl_key_file);
+                result = ssl_key_file;
         } else if(strcmp(string, "ssl_ca_cert_file")==0) {
-                return (ssl_ca_cert_file);
+                result = ssl_ca_cert_file;
         } else if(strcmp(string, "client_port")==0) {
-                return (client_port);
+                result = client_port;
         } else if(strcmp(string, "ssh_keys")==0) {
-                return (ssh_keys);
+                result = ssh_keys;
         } else if(strcmp(string, "kencrypt")==0) {
 		if (dumper_kencrypt == KENCRYPT_YES)
-                    return ("yes");
-		else
-		    return (NULL);
+                    result = "yes";
         }
-        return(NULL);
+
+	if (result && strlen(result) == 0)
+		result = NULL;
+
+        return(result);
 }
 
 static int

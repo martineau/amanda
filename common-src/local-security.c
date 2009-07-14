@@ -78,8 +78,8 @@ const security_driver_t local_security_driver = {
     tcpm_close_connection,
     NULL,
     NULL,
-    NULL,
-    NULL
+    generic_data_write,
+    generic_data_read
 };
 
 static int newhandle = 1;

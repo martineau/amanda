@@ -6387,66 +6387,74 @@ free_val_t(
 char *
 generic_get_security_conf(
 	char *string,
-	void *arg)
+	void *arg G_GNUC_UNUSED)
 {
-	arg = arg;
+	char *result = NULL;
 	if(!string || !*string)
 		return(NULL);
 
 	if(strcmp(string, "krb5principal")==0) {
-		return(getconf_str(CNF_KRB5PRINCIPAL));
+		result = getconf_str(CNF_KRB5PRINCIPAL);
 	} else if(strcmp(string, "krb5keytab")==0) {
-		return(getconf_str(CNF_KRB5KEYTAB));
+		result = getconf_str(CNF_KRB5KEYTAB);
 	}
-	return(NULL);
+
+	if (result && strlen(result) == 0)
+	    result = NULL;
+
+	return(result);
 }
 
 char *
 generic_client_get_security_conf(
-    char *	string,
-    void *	arg)
+    char *string,
+    void *arg G_GNUC_UNUSED)
 {
-	(void)arg;	/* Quiet unused parameter warning */
+	char *result = NULL;
 
 	if(!string || !*string)
 		return(NULL);
 
 	if(strcmp(string, "conf")==0) {
-		return(getconf_str(CNF_CONF));
+		result = getconf_str(CNF_CONF);
 	} else if(strcmp(string, "index_server")==0) {
-		return(getconf_str(CNF_INDEX_SERVER));
+		result = getconf_str(CNF_INDEX_SERVER);
 	} else if(strcmp(string, "tape_server")==0) {
-		return(getconf_str(CNF_TAPE_SERVER));
+		result = getconf_str(CNF_TAPE_SERVER);
 	} else if(strcmp(string, "tapedev")==0) {
-		return(getconf_str(CNF_TAPEDEV));
+		result = getconf_str(CNF_TAPEDEV);
         } else if(strcmp(string, "auth")==0) {
-		return(getconf_str(CNF_AUTH));
+		result = getconf_str(CNF_AUTH);
 	} else if(strcmp(string, "ssh_keys")==0) {
-		return(getconf_str(CNF_SSH_KEYS));
+		result = getconf_str(CNF_SSH_KEYS);
 	} else if(strcmp(string, "amandad_path")==0) {
-		return(getconf_str(CNF_AMANDAD_PATH));
+		result = getconf_str(CNF_AMANDAD_PATH);
 	} else if(strcmp(string, "client_username")==0) {
-		return(getconf_str(CNF_CLIENT_USERNAME));
+		result = getconf_str(CNF_CLIENT_USERNAME);
 	} else if(strcmp(string, "client_port")==0) {
-		return(getconf_str(CNF_CLIENT_PORT));
+		result = getconf_str(CNF_CLIENT_PORT);
 	} else if(strcmp(string, "ssl_fingerprint_file")==0) {
-		return(getconf_str(CNF_SSL_FINGERPRINT_FILE));
+		result = getconf_str(CNF_SSL_FINGERPRINT_FILE);
 	} else if(strcmp(string, "ssl_cert_file")==0) {
-		return(getconf_str(CNF_SSL_CERT_FILE));
+		result = getconf_str(CNF_SSL_CERT_FILE);
 	} else if(strcmp(string, "ssl_key_file")==0) {
-		return(getconf_str(CNF_SSL_KEY_FILE));
+		result = getconf_str(CNF_SSL_KEY_FILE);
 	} else if(strcmp(string, "ssl_ca_cert_file")==0) {
-		return(getconf_str(CNF_SSL_CA_CERT_FILE));
+		result = getconf_str(CNF_SSL_CA_CERT_FILE);
 	} else if(strcmp(string, "gnutar_list_dir")==0) {
-		return(getconf_str(CNF_GNUTAR_LIST_DIR));
+		result = getconf_str(CNF_GNUTAR_LIST_DIR);
 	} else if(strcmp(string, "amandates")==0) {
-		return(getconf_str(CNF_AMANDATES));
+		result = getconf_str(CNF_AMANDATES);
 	} else if(strcmp(string, "krb5principal")==0) {
-		return(getconf_str(CNF_KRB5PRINCIPAL));
+		result = getconf_str(CNF_KRB5PRINCIPAL);
 	} else if(strcmp(string, "krb5keytab")==0) {
-		return(getconf_str(CNF_KRB5KEYTAB));
+		result = getconf_str(CNF_KRB5KEYTAB);
 	}
-	return(NULL);
+
+	if (result && strlen(result) == 0)
+	    result = NULL;
+
+	return(result);
 }
 
 void

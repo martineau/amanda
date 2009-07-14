@@ -1926,23 +1926,24 @@ action2str(
 
 static char *
 amandad_get_security_conf(
-    char *      string,
-    void *      arg)
+    char *string,
+    void *arg G_GNUC_UNUSED)
 {
-    (void)arg;      /* Quiet unused parameter warning */
+    char *result = NULL;
 
     if (!string || !*string)
 	return(NULL);
 
     if (strcmp(string, "kencrypt")==0) {
 	if (amandad_kencrypt == KENCRYPT_YES)
-	    return ("yes");
-	else
-	    return (NULL);
+	    result = "yes";
     } else {
-	return generic_client_get_security_conf(string, arg);
+	result =  generic_client_get_security_conf(string, arg);
     }
 
-    return(NULL);
+    if (result && strlen(result) == 0)
+	result = NULL;
+
+    return(result);
 }
 
