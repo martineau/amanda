@@ -20,6 +20,7 @@ AM_LDFLAGS = $(AMANDA_STATIC_LDFLAGS)
 SCRIPTS_PERL = script-email \
 	     amlog-script \
 	     ampgsql \
+	     amndmp \
 	     amzfs-sendrecv \
 	     amzfs-snapshot \
 	     amsamba \

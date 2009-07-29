@@ -29,6 +29,7 @@ SUBDIRS = . \
 	amar-src \
 	amandad-src \
 	xfer-src \
+	ndmp-src \
 	$(TAPE_SUBDIRS) \
 	$(CLIENT_SUBDIRS) \
 	$(SERVER_SUBDIRS) \
