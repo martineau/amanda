@@ -38,7 +38,7 @@ use Amanda::Util qw( :constants :quoting);
 
 sub new {
     my $class = shift;
-    my ($config, $host, $disk, $device, $level, $index, $message, $collection, $record, $calcsize, $gnutar_path, $passfile, $ndmphost, $port, $bu_type) = @_;
+    my ($config, $host, $disk, $device, $level, $index, $message, $collection, $record, $calcsize, $gnutar_path, $passfile, $ndmphost, $port, $bu_type, $log_level, $log_file) = @_;
     my $self = $class->SUPER::new($config);
 
     if (defined $gnutar_path) {
@@ -65,7 +65,8 @@ sub new {
     $self->{passfile}         = $passfile;
     $self->{ndmphost}         = $ndmphost;
     $self->{port}             = $port;
-    $self->{bu_type}          = $bu_type;
+    $self->{log_level}        = $log_level;
+    $self->{log_file}         = $log_file;
 
     return $self;
 }
@@ -222,7 +223,6 @@ sub command_backup {
 	$D .= ":" . $self->{port} if ($self->{port});
 	$D .= "/m4," . $self->{username} . "," . $self->{password};
 	push @ARGV, $amndmp_backup,
-                    "-L", "/home/martineau/tmp/aa", "-d9",
                     "-c",
                     "-D", $D,
                     "-T.",
@@ -230,6 +230,12 @@ sub command_backup {
                     "-I", fileno($index_wtr),
                     "-E", "LEVEL=" . $level,
                     "-C", $self->{device};
+	if ($self->{log_file}) {
+	    push @ARGV, "-L", $self->{log_file};
+	    if ($self->{log_level}) {
+		push @ARGV, "-d", $self->{log_level};
+	    }
+	}
 	if ($self->{bu_type}) {
 	    push @ARGV, "-B", $self->{bu_type};
 	}
@@ -326,7 +332,6 @@ sub command_restore {
     $D .= ":" . $self->{port} if ($self->{port});
     $D .= "/m4," . $self->{username} . "," . $self->{password};
     push @cmd, $amndmp_backup,
-               "-L", "/home/martineau/tmp/amndmp.extract", "-d9",
                "-x",
                "-D", $D,
                "-T.",
@@ -336,6 +341,12 @@ sub command_restore {
 	       ;
 #               "-C", "/vol/vol2/recup";
 #               "-C", "/export/NDMP-target/restore";
+    if ($self->{log_file}) {
+	push @ARGV, "-L", $self->{log_file};
+	if ($self->{log_level}) {
+	    push @ARGV, "-d", $self->{log_level};
+	}
+    }
     if ($self->{bu_type}) {
 	push @cmd, "-B", $self->{bu_type};
     }
@@ -394,6 +405,8 @@ my $opt_passfile;
 my $opt_ndmphost;
 my $opt_port;
 my $opt_bu_type;
+my $opt_log_level;
+my $opt_log_file;
 
 Getopt::Long::Configure(qw{bundling});
 GetOptions(
@@ -413,6 +426,8 @@ GetOptions(
     'ndmphost=s'         => \$opt_ndmphost,
     'port=s'             => \$opt_port,
     'bu-type=s'          => \$opt_bu_type,
+    'log-level=s'        => \$opt_log_level,
+    'log-file=s'         => \$opt_log_file,
 ) or usage();
 
 if (defined $opt_version) {
@@ -420,6 +435,6 @@ if (defined $opt_version) {
     exit(0);
 }
 
-my $application = Amanda::Application::Amndmp->new($opt_config, $opt_host, $opt_disk, $opt_device, \@opt_level, $opt_index, $opt_message, $opt_collection, $opt_record, $opt_calcsize, $opt_gnutar_path, $opt_passfile, $opt_ndmphost, $opt_port, $opt_bu_type);
+my $application = Amanda::Application::Amndmp->new($opt_config, $opt_host, $opt_disk, $opt_device, \@opt_level, $opt_index, $opt_message, $opt_collection, $opt_record, $opt_calcsize, $opt_gnutar_path, $opt_passfile, $opt_ndmphost, $opt_port, $opt_bu_type, $opt_log_level, $opt_log_file);
 
 $application->do($ARGV[0]);
