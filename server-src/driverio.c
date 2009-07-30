@@ -598,6 +598,7 @@ dumper_cmd(
 	    char *qssl_cert_file;
 	    char *qssl_key_file;
 	    char *qssl_ca_cert_file;
+	    char *qssl_cipher_list;
 	    char *qclient_port;
 	    char *qssh_keys;
 
@@ -639,6 +640,7 @@ dumper_cmd(
 	    qssl_cert_file = quote_string(dp->ssl_cert_file);
 	    qssl_key_file = quote_string(dp->ssl_key_file);
 	    qssl_ca_cert_file = quote_string(dp->ssl_ca_cert_file);
+	    qssl_cipher_list = quote_string(dp->ssl_cipher_list);
 	    qclient_port = quote_string(dp->client_port);
 	    qssh_keys = quote_string(dp->ssh_keys);
 	    dbprintf("security_driver %s\n", dp->auth);
@@ -660,6 +662,7 @@ dumper_cmd(
 			    " ", qssl_cert_file,
 			    " ", qssl_key_file,
 			    " ", qssl_ca_cert_file,
+			    " ", qssl_cipher_list,
 			    " ", qclient_port,
 			    " ", qssh_keys,
 			    " ", dp->auth,

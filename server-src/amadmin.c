@@ -2233,6 +2233,11 @@ disklist_one(
     g_printf("        client-username \"%s\"\n", dp->client_username);
     g_printf("        client-port \"%s\"\n", dp->client_port);
     g_printf("        ssh-keys \"%s\"\n", dp->ssh_keys);
+    g_printf("        ssl-cert-file \"%s\"\n", dp->ssl_cert_file);
+    g_printf("        ssl-key-file \"%s\"\n", dp->ssl_key_file);
+    g_printf("        ssl-ca-cert-file \"%s\"\n", dp->ssl_ca_cert_file);
+    g_printf("        ssl-fingerprint-file \"%s\"\n", dp->ssl_fingerprint_file);
+    g_printf("        ssl-cipher-list \"%s\"\n", dp->ssl_cipher_list);
 
     g_printf("        holdingdisk ");
     switch(dp->to_holdingdisk) {

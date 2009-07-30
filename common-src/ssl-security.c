@@ -101,7 +101,8 @@ static int newhandle = 1;
  */
 static int runssl(struct sec_handle *, in_port_t port,
                   char *ssl_fingerprint_file, char *ssl_cert_file,
-                  char *ssl_key_file, char *ssl_ca_cert_file);
+                  char *ssl_key_file, char *ssl_ca_cert_file,
+                  char *ssl_cipher_list);
 
 
 /*
@@ -125,6 +126,7 @@ ssl_connect(
     char *ssl_cert_file = NULL;
     char *ssl_key_file = NULL;
     char *ssl_ca_cert_file = NULL;
+    char *ssl_cipher_list = NULL;
 
     assert(fn != NULL);
     assert(hostname != NULL);
@@ -176,6 +178,7 @@ ssl_connect(
 	ssl_cert_file        = conf_fn("ssl_cert_file", datap);
 	ssl_key_file         = conf_fn("ssl_key_file", datap);
 	ssl_ca_cert_file     = conf_fn("ssl_ca_cert_file", datap);
+	ssl_cipher_list      = conf_fn("ssl_cipher_list", datap);
     } else {
 	service = AMANDA_SERVICE_NAME;
     }
@@ -190,7 +193,8 @@ ssl_connect(
      * We need to open a new connection.
      */
     if(rh->rc->read == -1) {
-	if (runssl(rh, port, ssl_fingerprint_file, ssl_cert_file, ssl_key_file, ssl_ca_cert_file) < 0)
+	if (runssl(rh, port, ssl_fingerprint_file, ssl_cert_file, ssl_key_file,
+		   ssl_ca_cert_file, ssl_cipher_list) < 0)
 	    goto error;
 	rh->rc->refcnt++;
     }
@@ -314,6 +318,7 @@ ssl_accept(
     char *ssl_cert_file        = conf_fn("ssl_cert_file", datap);
     char *ssl_key_file         = conf_fn("ssl_key_file", datap);
     char *ssl_ca_cert_file     = conf_fn("ssl_ca_cert_file", datap);
+    char *ssl_cipher_list      = conf_fn("ssl_cipher_list", datap);
 
     if (!ssl_cert_file) {
 	dbprintf(_("ssl-cert-file must be set in amanda-client.conf\n"));
@@ -372,6 +377,15 @@ ssl_accept(
 	return;
     }
     SSL_CTX_set_mode(rc->ctx, SSL_MODE_AUTO_RETRY);
+
+    if (ssl_cipher_list) {
+	dbprintf("Set ssl_cipher_list to %s\n", ssl_cipher_list);
+	if (SSL_CTX_set_cipher_list(rc->ctx, ssl_cipher_list) == 0) {
+	    dbprintf(_("SSL_CTX_set_cipher_list failed: %s\n"),
+		     ERR_error_string(ERR_get_error(), NULL));
+	    return;
+	}
+    }
 
     /* Load the server certificate into the SSL_CTX structure */
     dbprintf(_("Loading ssl-cert-file certificate %s\n"), ssl_cert_file);
@@ -454,6 +468,9 @@ ssl_accept(
 	}
 	X509_free(client_cert);
     }
+
+    dbprintf(_("SSL_cipher: %s\n"), SSL_get_cipher(rc->ssl));
+
     sec_tcp_conn_read(rc);
 }
 
@@ -468,7 +485,8 @@ runssl(
     char *ssl_fingerprint_file,
     char *ssl_cert_file,
     char *ssl_key_file,
-    char *ssl_ca_cert_file)
+    char *ssl_ca_cert_file,
+    char *ssl_cipher_list)
 {
     int		     server_socket;
     in_port_t	     my_port;
@@ -515,6 +533,15 @@ runssl(
 	return -1;
     }
     SSL_CTX_set_mode(rc->ctx, SSL_MODE_AUTO_RETRY);
+
+    if (ssl_cipher_list) {
+	dbprintf("Set ssl_cipher_list to %s\n", ssl_cipher_list);
+	if (SSL_CTX_set_cipher_list(rc->ctx, ssl_cipher_list) == 0) {
+	    security_seterror(&rh->sech, "%s",
+		              ERR_error_string(ERR_get_error(), NULL));
+	    return -1;
+	}
+    }
 
     /* Load the private-key corresponding to the client certificate */
     dbprintf("Loading ssl-key-file private-key %s\n", ssl_key_file);
@@ -615,6 +642,8 @@ runssl(
 	X509_free (server_cert);
     }
     
+    dbprintf(_("SSL_cipher: %s\n"), SSL_get_cipher(rc->ssl));
+
     return 0;
 }
 

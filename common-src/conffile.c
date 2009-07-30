@@ -125,7 +125,7 @@ typedef enum {
     CONF_SRV_DECRYPT_OPT,	CONF_CLNT_DECRYPT_OPT,	CONF_AMANDAD_PATH,
     CONF_CLIENT_USERNAME,	CONF_CLIENT_PORT,	CONF_ALLOW_SPLIT,
     CONF_SSL_FINGERPRINT_FILE,	CONF_SSL_CERT_FILE,	CONF_SSL_KEY_FILE,
-    CONF_SSL_CA_CERT_FILE,
+    CONF_SSL_CA_CERT_FILE,	CONF_SSL_CIPHER_LIST,
 
     /* tape type */
     /*COMMENT,*/		CONF_BLOCKSIZE,
@@ -741,6 +741,7 @@ keytab_t client_keytab[] = {
     { "CLIENT_PORT", CONF_CLIENT_PORT },
     { "SSL_FINGERPRINT_FILE", CONF_SSL_FINGERPRINT_FILE },
     { "SSL_CERT_FILE", CONF_SSL_CERT_FILE },
+    { "SSL_CIPHER_LIST", CONF_SSL_CIPHER_LIST },
     { "SSL_KEY_FILE", CONF_SSL_KEY_FILE },
     { "SSL_CA_CERT_FILE", CONF_SSL_CA_CERT_FILE },
     { "GNUTAR_LIST_DIR", CONF_GNUTAR_LIST_DIR },
@@ -991,6 +992,7 @@ keytab_t server_keytab[] = {
     { "SSH_KEYS", CONF_SSH_KEYS },
     { "SSL_CA_CERT_FILE", CONF_SSL_CA_CERT_FILE },
     { "SSL_CERT_FILE", CONF_SSL_CERT_FILE },
+    { "SSL_CIPHER_LIST", CONF_SSL_CIPHER_LIST },
     { "SSL_FINGERPRINT_FILE", CONF_SSL_FINGERPRINT_FILE },
     { "SSL_KEY_FILE", CONF_SSL_KEY_FILE },
     { "STANDARD", CONF_STANDARD },
@@ -1098,6 +1100,7 @@ conf_var_t client_var [] = {
    { CONF_SSL_CERT_FILE      , CONFTYPE_STR     , read_str     , CNF_SSL_CERT_FILE    , NULL },
    { CONF_SSL_KEY_FILE       , CONFTYPE_STR     , read_str     , CNF_SSL_KEY_FILE    , NULL },
    { CONF_SSL_CA_CERT_FILE   , CONFTYPE_STR     , read_str     , CNF_SSL_CA_CERT_FILE    , NULL },
+   { CONF_SSL_CIPHER_LIST    , CONFTYPE_STR     , read_str     , CNF_SSL_CIPHER_LIST     , NULL },
    { CONF_GNUTAR_LIST_DIR    , CONFTYPE_STR     , read_str     , CNF_GNUTAR_LIST_DIR    , NULL },
    { CONF_AMANDATES          , CONFTYPE_STR     , read_str     , CNF_AMANDATES          , NULL },
    { CONF_MAILER             , CONFTYPE_STR     , read_str     , CNF_MAILER             , NULL },
@@ -1269,6 +1272,7 @@ conf_var_t dumptype_var [] = {
    { CONF_SSL_CERT_FILE     , CONFTYPE_STR      , read_str      , DUMPTYPE_SSL_CERT_FILE    , NULL },
    { CONF_SSL_KEY_FILE      , CONFTYPE_STR      , read_str      , DUMPTYPE_SSL_KEY_FILE    , NULL },
    { CONF_SSL_CA_CERT_FILE  , CONFTYPE_STR      , read_str      , DUMPTYPE_SSL_CA_CERT_FILE    , NULL },
+   { CONF_SSL_CIPHER_LIST   , CONFTYPE_STR      , read_str      , DUMPTYPE_SSL_CIPHER_LIST     , NULL },
    { CONF_SSH_KEYS          , CONFTYPE_STR      , read_str      , DUMPTYPE_SSH_KEYS          , NULL },
    { CONF_SRVCOMPPROG       , CONFTYPE_STR      , read_str      , DUMPTYPE_SRVCOMPPROG       , NULL },
    { CONF_CLNTCOMPPROG      , CONFTYPE_STR      , read_str      , DUMPTYPE_CLNTCOMPPROG      , NULL },
@@ -2247,6 +2251,7 @@ init_dumptype_defaults(void)
     conf_init_str   (&dpcur.value[DUMPTYPE_SSL_CERT_FILE]     , "");
     conf_init_str   (&dpcur.value[DUMPTYPE_SSL_KEY_FILE]      , "");
     conf_init_str   (&dpcur.value[DUMPTYPE_SSL_CA_CERT_FILE]  , "");
+    conf_init_str   (&dpcur.value[DUMPTYPE_SSL_CIPHER_LIST]   , "");
     conf_init_str   (&dpcur.value[DUMPTYPE_SSH_KEYS]          , "");
     conf_init_str   (&dpcur.value[DUMPTYPE_AUTH]   , "BSD");
     conf_init_exinclude(&dpcur.value[DUMPTYPE_EXCLUDE]);
@@ -4658,6 +4663,7 @@ init_defaults(
     conf_init_str(&conf_data[CNF_SSL_CERT_FILE]     , "");
     conf_init_str(&conf_data[CNF_SSL_KEY_FILE]      , "");
     conf_init_str(&conf_data[CNF_SSL_CA_CERT_FILE]  , "");
+    conf_init_str(&conf_data[CNF_SSL_CIPHER_LIST]   , "");
     conf_init_str(&conf_data[CNF_GNUTAR_LIST_DIR], GNUTAR_LISTED_INCREMENTAL_DIR);
     conf_init_str(&conf_data[CNF_AMANDATES], DEFAULT_AMANDATES_FILE);
     conf_init_str(&conf_data[CNF_MAILTO], "");
@@ -6441,6 +6447,8 @@ generic_client_get_security_conf(
 		result = getconf_str(CNF_SSL_KEY_FILE);
 	} else if(strcmp(string, "ssl_ca_cert_file")==0) {
 		result = getconf_str(CNF_SSL_CA_CERT_FILE);
+	} else if(strcmp(string, "ssl_cipher_list")==0) {
+		result = getconf_str(CNF_SSL_CIPHER_LIST);
 	} else if(strcmp(string, "gnutar_list_dir")==0) {
 		result = getconf_str(CNF_GNUTAR_LIST_DIR);
 	} else if(strcmp(string, "amandates")==0) {

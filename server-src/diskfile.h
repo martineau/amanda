@@ -80,6 +80,7 @@ typedef struct disk_s {
     char	*ssl_cert_file;		/* */
     char	*ssl_key_file;		/* */
     char	*ssl_ca_cert_file;	/* */
+    char	*ssl_cipher_list;	/* */
     char	*client_port;		/* port to connect on the client */
     char	*ssh_keys;		/* ssh_key file to use */
     sl_t	*exclude_file;		/* file exclude spec */
