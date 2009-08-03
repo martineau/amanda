@@ -319,6 +319,7 @@ ssl_accept(
     char *ssl_key_file         = conf_fn("ssl_key_file", datap);
     char *ssl_ca_cert_file     = conf_fn("ssl_ca_cert_file", datap);
     char *ssl_cipher_list      = conf_fn("ssl_cipher_list", datap);
+    int   ssl_check_host       = atoi(conf_fn("ssl_check_host", datap));
 
     if (!ssl_cert_file) {
 	dbprintf(_("ssl-cert-file must be set in amanda-client.conf\n"));
@@ -346,7 +347,8 @@ ssl_accept(
 		  gai_strerror(result));
 	return;
     }
-    if (check_name_give_sockaddr(hostname,
+
+    if (ssl_check_host && check_name_give_sockaddr(hostname,
 				 (struct sockaddr *)&sin, &errmsg) < 0) {
 	amfree(errmsg);
 	return;

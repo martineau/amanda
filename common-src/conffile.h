@@ -467,6 +467,7 @@ typedef enum {
     CNF_SSL_KEY_FILE,
     CNF_SSL_CA_CERT_FILE,
     CNF_SSL_CIPHER_LIST,
+    CNF_SSL_CHECK_HOST,
     CNF_CNF /* sentinel */
 } confparm_key;
 
