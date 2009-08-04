@@ -102,7 +102,7 @@ static int newhandle = 1;
 static int runssl(struct sec_handle *, in_port_t port,
                   char *ssl_fingerprint_file, char *ssl_cert_file,
                   char *ssl_key_file, char *ssl_ca_cert_file,
-                  char *ssl_cipher_list);
+                  char *ssl_cipher_list, int ssl_check_certificate_host);
 
 
 /*
@@ -127,6 +127,7 @@ ssl_connect(
     char *ssl_key_file = NULL;
     char *ssl_ca_cert_file = NULL;
     char *ssl_cipher_list = NULL;
+    int   ssl_check_certificate_host = 1;
 
     assert(fn != NULL);
     assert(hostname != NULL);
@@ -179,6 +180,8 @@ ssl_connect(
 	ssl_key_file         = conf_fn("ssl_key_file", datap);
 	ssl_ca_cert_file     = conf_fn("ssl_ca_cert_file", datap);
 	ssl_cipher_list      = conf_fn("ssl_cipher_list", datap);
+	ssl_check_certificate_host =
+			    atoi(conf_fn("ssl_check_certificate_host", datap));
     } else {
 	service = AMANDA_SERVICE_NAME;
     }
@@ -194,7 +197,8 @@ ssl_connect(
      */
     if(rh->rc->read == -1) {
 	if (runssl(rh, port, ssl_fingerprint_file, ssl_cert_file, ssl_key_file,
-		   ssl_ca_cert_file, ssl_cipher_list) < 0)
+		   ssl_ca_cert_file, ssl_cipher_list,
+		   ssl_check_certificate_host) < 0)
 	    goto error;
 	rh->rc->refcnt++;
     }
@@ -320,6 +324,7 @@ ssl_accept(
     char *ssl_ca_cert_file     = conf_fn("ssl_ca_cert_file", datap);
     char *ssl_cipher_list      = conf_fn("ssl_cipher_list", datap);
     int   ssl_check_host       = atoi(conf_fn("ssl_check_host", datap));
+    int   ssl_check_certificate_host = atoi(conf_fn("ssl_check_certificate_host", datap));
 
     if (!ssl_cert_file) {
 	dbprintf(_("ssl-cert-file must be set in amanda-client.conf\n"));
@@ -460,6 +465,28 @@ ssl_accept(
         auth_debug(1, _("\t issuer: %s\n"), str);
         amfree(str);
 
+	if (ssl_check_certificate_host) {
+	    X509_NAME *x509_name = X509_get_subject_name(client_cert);
+	    int loc = -1;
+	    loc = X509_NAME_get_index_by_NID(x509_name, NID_commonName, loc);
+	    if (loc != -1) {
+		X509_NAME_ENTRY *x509_entry = X509_NAME_get_entry(x509_name, loc);
+		ASN1_STRING *asn1_string = X509_NAME_ENTRY_get_data(x509_entry);
+		char *cert_hostname =  (char *)ASN1_STRING_data(asn1_string);
+		auth_debug(1, "common_name: %s\n", cert_hostname);
+
+		if (check_name_give_sockaddr((char*)cert_hostname,
+				 (struct sockaddr *)&sin, &errmsg) < 0) {
+		    dbprintf("Common name of certicate (%s) doesn't resolv to IP (%s)\n", cert_hostname, str_sockaddr(&sin));
+		    amfree(errmsg);
+		    return;
+		}
+	    } else {
+		dbprintf("Certificate have no common name\n");
+		return;
+	    }
+	}
+
 	if (ssl_fingerprint_file) {
 	    str = validate_fingerprints(client_cert, ssl_fingerprint_file);
 	    if (str) {
@@ -488,13 +515,16 @@ runssl(
     char *ssl_cert_file,
     char *ssl_key_file,
     char *ssl_ca_cert_file,
-    char *ssl_cipher_list)
+    char *ssl_cipher_list,
+    int   ssl_check_certificate_host)
 {
     int		     server_socket;
     in_port_t	     my_port;
     struct tcp_conn *rc = rh->rc;
     int              err;
     X509            *server_cert;
+    sockaddr_union   sin;
+    socklen_t_equiv  len;
 
     if (!ssl_key_file) {
 	security_seterror(&rh->sech, _("ssl-key-file must be set"));
@@ -521,6 +551,13 @@ runssl(
     }
 
     rc->read = rc->write = server_socket;
+
+    len = sizeof(sin);
+    if (getpeername(server_socket, (struct sockaddr *)&sin, &len) < 0) {
+	security_seterror(&rh->sech, _("getpeername returned: %s\n"), strerror(errno));
+	return -1;
+    }
+    copy_sockaddr(&rc->peer, &sin);
 
     init_ssl();
 
@@ -632,6 +669,37 @@ runssl(
         str = X509_NAME_oneline(X509_get_issuer_name(server_cert), 0, 0);
         auth_debug(1, _("\t issuer: %s\n"), str);
         amfree(str);
+
+	if (ssl_check_certificate_host) {
+	    int   loc = -1;
+	    char *errmsg = NULL;
+	    X509_NAME *x509_name = X509_get_subject_name(server_cert);
+
+	    loc = X509_NAME_get_index_by_NID(x509_name, NID_commonName, loc);
+	    if (loc != -1) {
+		X509_NAME_ENTRY *x509_entry = X509_NAME_get_entry(x509_name, loc);
+		ASN1_STRING *asn1_string = X509_NAME_ENTRY_get_data(x509_entry);
+		char *cert_hostname =  (char *)ASN1_STRING_data(asn1_string);
+		auth_debug(1, "common_name: %s\n", cert_hostname);
+
+		if (check_name_give_sockaddr((char*)cert_hostname,
+				 (struct sockaddr *)&rc->peer, &errmsg) < 0) {
+		    security_seterror(&rh->sech,
+		       _("Common name of certicate (%s) doesn't resolv to IP (%s): %s"),
+		       cert_hostname, str_sockaddr(&rc->peer), errmsg);
+		    amfree(errmsg);
+		    return -1;
+		}
+		auth_debug(1,
+		         _("Certificate common name (%s) resolve to IP (%s)\n"),
+			 cert_hostname, str_sockaddr(&rc->peer));
+	    } else {
+		security_seterror(&rh->sech,
+				  _("Certificate have no common name"));
+		dbprintf("Certificate have no common name\n");
+		return -1;
+	    }
+	}
 
 	if (ssl_fingerprint_file) {
 	    str = validate_fingerprints(server_cert, ssl_fingerprint_file);

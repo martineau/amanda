@@ -2238,6 +2238,8 @@ disklist_one(
     g_printf("        ssl-ca-cert-file \"%s\"\n", dp->ssl_ca_cert_file);
     g_printf("        ssl-fingerprint-file \"%s\"\n", dp->ssl_fingerprint_file);
     g_printf("        ssl-cipher-list \"%s\"\n", dp->ssl_cipher_list);
+    g_printf("        ssl-check-certificate_host \"%s\"\n",
+				 (dp->ssl_cipher_list? "YES" : "NO"));
 
     g_printf("        holdingdisk ");
     switch(dp->to_holdingdisk) {

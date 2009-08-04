@@ -468,6 +468,7 @@ typedef enum {
     CNF_SSL_CA_CERT_FILE,
     CNF_SSL_CIPHER_LIST,
     CNF_SSL_CHECK_HOST,
+    CNF_SSL_CHECK_CERTIFICATE_HOST,
     CNF_CNF /* sentinel */
 } confparm_key;
 
@@ -696,6 +697,7 @@ typedef enum {
     DUMPTYPE_SSL_KEY_FILE,
     DUMPTYPE_SSL_CA_CERT_FILE,
     DUMPTYPE_SSL_CIPHER_LIST,
+    DUMPTYPE_SSL_CHECK_CERTIFICATE_HOST,
     DUMPTYPE_DUMPTYPE /* sentinel */
 } dumptype_key;
 
@@ -790,6 +792,7 @@ char *dumptype_name(dumptype_t *dtyp);
 #define dumptype_get_ssl_key_file(dtyp)         (val_t_to_str(dumptype_getconf((dtyp), DUMPTYPE_SSL_KEY_FILE)))
 #define dumptype_get_ssl_ca_cert_file(dtyp)     (val_t_to_str(dumptype_getconf((dtyp), DUMPTYPE_SSL_CA_CERT_FILE)))
 #define dumptype_get_ssl_cipher_list(dtyp)      (val_t_to_str(dumptype_getconf((dtyp), DUMPTYPE_SSL_CIPHER_LIST)))
+#define dumptype_get_ssl_check_certificate_host(dtyp) (val_t_to_boolean(dumptype_getconf((dtyp), DUMPTYPE_SSL_CHECK_CERTIFICATE_HOST)))
 
 /*
  * Interface parameter access

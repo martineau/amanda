@@ -703,6 +703,7 @@ parse_diskline(
     disk->ssl_key_file       = dumptype_get_ssl_key_file(dtype);
     disk->ssl_ca_cert_file   = dumptype_get_ssl_ca_cert_file(dtype);
     disk->ssl_cipher_list    = dumptype_get_ssl_cipher_list(dtype);
+    disk->ssl_check_certificate_host  = dumptype_get_ssl_check_certificate_host(dtype);
     disk->client_port        = dumptype_get_client_port(dtype);
     disk->ssh_keys           = dumptype_get_ssh_keys(dtype);
     disk->comprate[0]	     = dumptype_get_comprate(dtype)[0];

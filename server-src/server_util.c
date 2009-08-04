@@ -172,6 +172,11 @@ amhost_get_security_conf(
 	result =  ((am_host_t *)arg)->disks->ssl_ca_cert_file;
     else if(strcmp(string, "ssl_cipher_list")==0)
 	result =  ((am_host_t *)arg)->disks->ssl_cipher_list;
+    else if(strcmp(string, "ssl_check_certificate_host")==0)
+	if (((am_host_t *)arg)->disks->ssl_cipher_list)
+	    result = "1";
+	else
+	    result = "0";
     else if(strcmp(string, "client_port")==0)
 	result =  ((am_host_t *)arg)->disks->client_port;
     else if(strcmp(string, "ssh_keys")==0)

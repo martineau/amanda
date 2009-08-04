@@ -115,6 +115,7 @@ static char *ssl_cert_file=NULL;
 static char *ssl_key_file=NULL;
 static char *ssl_ca_cert_file=NULL;
 static char *ssl_cipher_list=NULL;
+static char *ssl_check_certificate_host=NULL;
 static char *client_port=NULL;
 static char *ssh_keys=NULL;
 static char *auth=NULL;
@@ -179,7 +180,7 @@ static int	startup_dump(const char *, const char *, const char *, int,
 			const char *, const char *, const char *,
 			const char *, const char *, const char *,
 			const char *, const char *, const char *,
-			const char *);
+			const char *, const char *);
 static void	stop_dump(void);
 
 static void	read_indexfd(void *, void *, ssize_t);
@@ -431,6 +432,7 @@ main(
 	     *   ssl_key_file
 	     *   ssl_ca_cert_file
 	     *   ssl_cipher_list
+	     *   ssl_check_certificate_host
 	     *   client_port
 	     *   ssh_keys
 	     *   security_driver
@@ -539,6 +541,12 @@ main(
 	    ssl_cipher_list = newstralloc(ssl_cipher_list, cmdargs->argv[a++]);
 
 	    if(a >= cmdargs->argc) {
+		error(_("error [dumper PORT-DUMP: not enough args: ssl_check_certificate_host]"));
+	    }
+	    ssl_check_certificate_host = newstralloc(ssl_check_certificate_host,
+						     cmdargs->argv[a++]);
+
+	    if(a >= cmdargs->argc) {
 		error(_("error [dumper PORT-DUMP: not enough args: client_port]"));
 	    }
 	    client_port = newstralloc(client_port, cmdargs->argv[a++]);
@@ -623,6 +631,7 @@ main(
 			      ssl_key_file,
 			      ssl_ca_cert_file,
 			      ssl_cipher_list,
+			      ssl_check_certificate_host,
 			      client_port,
 			      ssh_keys,
 			      auth,
@@ -2243,6 +2252,8 @@ dumper_get_security_conf(
                 result = ssl_ca_cert_file;
         } else if(strcmp(string, "ssl_cipher_list")==0) {
                 result = ssl_cipher_list;
+        } else if(strcmp(string, "ssl_check_certificate_host")==0) {
+                result = ssl_check_certificate_host;
         } else if(strcmp(string, "client_port")==0) {
                 result = client_port;
         } else if(strcmp(string, "ssh_keys")==0) {
@@ -2273,6 +2284,7 @@ startup_dump(
     const char *ssl_key_file,
     const char *ssl_ca_cert_file,
     const char *ssl_cipher_list,
+    const char *ssl_check_certificate_host,
     const char *client_port,
     const char *ssh_keys,
     const char *auth,
@@ -2297,6 +2309,7 @@ startup_dump(
     (void)ssl_key_file;		/* Quiet unused parameter warning */
     (void)ssl_ca_cert_file;	/* Quiet unused parameter warning */
     (void)ssl_cipher_list;	/* Quiet unused parameter warning */
+    (void)ssl_check_certificate_host;	/* Quiet unused parameter warning */
     (void)client_port;		/* Quiet unused parameter warning */
     (void)ssh_keys;		/* Quiet unused parameter warning */
     (void)auth;			/* Quiet unused parameter warning */
