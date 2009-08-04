@@ -224,46 +224,10 @@ error:
     (*fn)(arg, &rh->sech, S_ERROR);
 }
 
-char *validate_fingerprint(X509 *cert, char *fingerprint);
-char *validate_fingerprints(X509 *cert, char *ssl_fingerprint_file);
+static char *validate_fingerprints(X509 *cert, char *ssl_fingerprint_file);
 
-char *validate_fingerprint(
-    X509 *cert,
-    char *fingerprint)
-{
-    unsigned char  md[EVP_MAX_MD_SIZE + 1];
-    unsigned int   len_md;
-    const EVP_MD  *evp_md;
-    char *new_fingerprint;
-    char *fp;
-    unsigned int   i;
-
-    evp_md = EVP_get_digestbyname("MD5");
-    if (!evp_md) {
-	return g_strdup(_("EVP_get_digestbyname failed"));
-    }
-    if (!X509_digest(cert, evp_md, md, &len_md)) {
-	return g_strdup(_("cannot get MD5 digest"));
-    }
-
-    new_fingerprint  = malloc(len_md*3 + 1);
-    fp = new_fingerprint;
-    for (i=0; i < len_md; i++) {
-	snprintf(fp, 4, "%02X:", (unsigned) md[i]);
-	fp+=3;
-    }
-    /* remove latest ':' */
-    fp --;
-    *fp = '\0';
-
-    if (strcasecmp(new_fingerprint, fingerprint)!= 0) {
-	return g_strdup_printf("fingerprint differ %s %s", new_fingerprint, fingerprint);
-    }
-    amfree(new_fingerprint);
-    return NULL;
-}
-
-char *validate_fingerprints(
+static char *
+validate_fingerprints(
     X509 *cert,
     char *ssl_fingerprint_file)
 {
@@ -271,10 +235,64 @@ char *validate_fingerprints(
     char fingerprint[32768];
     char *errmsg = NULL;
 
+    unsigned char  md5[EVP_MAX_MD_SIZE + 1];
+    unsigned int   len_md5;
+    const EVP_MD  *evp_md5;
+    char *md5_fingerprint;
+    unsigned char  sha1[EVP_MAX_MD_SIZE + 1];
+    unsigned int   len_sha1;
+    const EVP_MD  *evp_sha1;
+    char *sha1_fingerprint;
+    char *fp;
+    unsigned int   i;
+
+    const char *md5_const  = "MD5 Fingerprint=";
+    const char *sha1_const = "SHA1 Fingerprint=";
+    const size_t md5_const_len = strlen(md5_const);
+    const size_t sha1_const_len = strlen(sha1_const);
+
     if (ssl_fingerprint_file == NULL) {
 	dbprintf("No fingerprint_file set\n");
 	return NULL;
     }
+
+    evp_md5 = EVP_get_digestbyname("MD5");
+    if (!evp_md5) {
+	auth_debug(1, _("EVP_get_digestbyname(MD5) failed"));
+    }
+    if (!X509_digest(cert, evp_md5, md5, &len_md5)) {
+	auth_debug(1, _("cannot get MD5 digest"));
+    }
+
+    md5_fingerprint  = malloc(len_md5*3 + 1);
+    fp = md5_fingerprint;
+    for (i=0; i < len_md5; i++) {
+	snprintf(fp, 4, "%02X:", (unsigned) md5[i]);
+	fp+=3;
+    }
+    /* remove latest ':' */
+    fp --;
+    *fp = '\0';
+    auth_debug(1, _("md5: %s\n"), md5_fingerprint);
+
+    evp_sha1 = EVP_get_digestbyname("SHA1");
+    if (!evp_sha1) {
+	auth_debug(1, _("EVP_get_digestbyname(SHA1) failed"));
+    }
+    if (!X509_digest(cert, evp_sha1, sha1, &len_sha1)) {
+	auth_debug(1, _("cannot get SHA1 digest"));
+    }
+
+    sha1_fingerprint  = malloc(len_sha1*3 + 1);
+    fp = sha1_fingerprint;
+    for (i=0; i < len_sha1; i++) {
+	snprintf(fp, 4, "%02X:", (unsigned) sha1[i]);
+	fp+=3;
+    }
+    /* remove latest ':' */
+    fp --;
+    *fp = '\0';
+    auth_debug(1, _("sha1: %s\n"), sha1_fingerprint);
 
     fingers = fopen(ssl_fingerprint_file, "r");
     if (!fingers) {
@@ -283,19 +301,25 @@ char *validate_fingerprints(
 	dbprintf("%s\n", errmsg);
 	return errmsg;
     }
+
     while (fgets(fingerprint, 32768, fingers) != NULL) {
 	int len = strlen(fingerprint)-1;
 	if (len > 0 && fingerprint[len] == '\n')
 	    fingerprint[len] = '\0';
-	amfree(errmsg);
-	errmsg = validate_fingerprint(cert, fingerprint);
-	if (errmsg == NULL) {
-	    dbprintf("Fingerprint '%s' match\n", fingerprint);
-	    return NULL;
+	if (strncmp(md5_const, fingerprint, md5_const_len) == 0) {
+	    if (strcmp(md5_fingerprint, fingerprint+md5_const_len) == 0) {
+		dbprintf("MD5 fingerprint '%s' match\n", md5_fingerprint);
+		return NULL;
+	    }
+	} else if (strncmp(sha1_const, fingerprint, sha1_const_len) == 0) {
+	    if (strcmp(sha1_fingerprint, fingerprint+sha1_const_len) == 0) {
+		dbprintf("SHA1 fingerprint '%s' match\n", sha1_fingerprint);
+		return NULL;
+	    }
 	}
-	dbprintf("Fingerprint '%s' doesn't match: %s\n", fingerprint, errmsg);
+	auth_debug(1, _("Fingerprint '%s' doesn't match\n"), fingerprint);
     }
-    return errmsg;
+    return g_strdup_printf("No fingerprint match");;
 }
 
 /*
