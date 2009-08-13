@@ -425,9 +425,8 @@ get_master_process(
 }
 
 
-int
-start_ndmp_proxy(
-    char **errmsg)
+char*
+start_ndmp_proxy(void)
 {
     int        use_ndmp;
     char      *ndmp_proxy;
@@ -440,10 +439,11 @@ start_ndmp_proxy(
     char      *ndmp_proxy_debug_file;
     char      *cmdline;
     int        i;
+    char       *errmsg = NULL;
 
     use_ndmp = getconf_boolean(CNF_NDMP_PROXY);
     if (!use_ndmp) {
-	return TRUE;
+	return NULL;
     }
 
     ndmp_proxy_port = getconf_int(CNF_NDMP_PROXY_PORT);
@@ -478,18 +478,18 @@ start_ndmp_proxy(
     g_ptr_array_free_full(proxy_argv);
     rc = read(proxy_out, buffer, sizeof(buffer)-1);
     if (rc == -1) {
-	*errmsg = g_strdup_printf("Error reading from ndmp-proxy: %s",
+	errmsg = g_strdup_printf("Error reading from ndmp-proxy: %s",
 				  strerror(errno));
-	return FALSE;
+	return errmsg;
     } else if (rc == 0) {
-	*errmsg = g_strdup_printf("ndmp-proxy ended unexpectedly");
-	return FALSE;
+	errmsg = g_strdup_printf("ndmp-proxy ended unexpectedly");
+	return errmsg;
     }
     buffer[rc] = '\0';
     if (strncmp(buffer, "PORT ", 5) != 0) {
-	*errmsg = g_strdup_printf("ndmp-proxy failed: %s", buffer);
-	return FALSE;
+	errmsg = g_strdup_printf("ndmp-proxy failed: %s", buffer);
+	return errmsg;
     }
     val_t__int(getconf(CNF_NDMP_PROXY_PORT)) = atoi(buffer+5);
-    return TRUE;
+    return NULL;
 }

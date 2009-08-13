@@ -205,6 +205,20 @@ endif
 EXTRA_DIST += Amanda/Disklist.swg Amanda/Disklist.pm Amanda/Disklist.pod
 
 if WANT_SERVER
+# PACKAGE: Amanda::Ndmp
+libNdmpdir = $(amperldir)/auto/Amanda/Ndmp
+libNdmp_LTLIBRARIES = libNdmp.la
+libNdmp_la_SOURCES = Amanda/Ndmp.c $(AMGLUE_SWG)
+libNdmp_la_LDFLAGS = $(PERL_EXT_LDFLAGS)
+libNdmp_la_LIBADD = libamglue.la \
+	$(top_builddir)/server-src/libamserver.la \
+	$(top_builddir)/common-src/libamanda.la
+Amanda_DATA += Amanda/Ndmp.pm
+MAINTAINERCLEANFILES += Amanda/Ndmp.c Amanda/Ndmp.pm
+endif
+EXTRA_DIST += Amanda/Ndmp.swg Amanda/Ndmp.pm
+
+if WANT_SERVER
 # PACKAGE: Amanda::Changer
 Amanda_DATA += Amanda/Changer.pm
 endif

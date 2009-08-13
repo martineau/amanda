@@ -516,13 +516,12 @@ try_open_ndmp_device(
     amprotocol_packet_t *c_packet;
     char                *error_str;
 
-dbprintf("try_open_ndmp_device 1\n");
     rc = amprotocol_send_list(nself->protocol, CMD_TAPE_OPEN, 4,
 					device_filename, "RDWR",
 					"localhost", "4,ndmp,ndmp");
     if (rc <= 0) {
 	device_set_error(dself,
-			 _("failed to write CMD_TAPE_OPEN to ndmp-proxy"),
+			 stralloc(_("failed to write CMD_TAPE_OPEN to ndmp-proxy")),
 			 DEVICE_STATUS_DEVICE_ERROR);
 	return -1;
     }
@@ -530,14 +529,15 @@ dbprintf("try_open_ndmp_device 1\n");
 
     c_packet = amprotocol_get(nself->protocol);
     if (!c_packet) {
-	device_set_error(dself, _("B failed to get a packet from ndmp-proxy"),
+	device_set_error(dself,
+			 stralloc(_("B failed to get a packet from ndmp-proxy")),
 			 DEVICE_STATUS_DEVICE_ERROR);
 	return -1;
     }
     dbprintf("get packet from ndmp-proxy\n");
     if (c_packet->command != REPLY_TAPE_OPEN) {
 	device_set_error(dself,
-			 _("failed to get a REPLY_TAPE_OPEN from ndmp-proxy"),
+			 stralloc(_("failed to get a REPLY_TAPE_OPEN from ndmp-proxy")),
 			 DEVICE_STATUS_DEVICE_ERROR);
 	free_amprotocol_packet(c_packet);
 	return -1;
@@ -569,13 +569,14 @@ ndmp_device_open_device(
     amprotocol_packet_t *c_packet;
     int                  fd;
 
-dbprintf("ndmp_device_open_device: %s : %s : %s\n", device_name, device_type, device_node);
+    dbprintf("ndmp_device_open_device: %s : %s : %s\n", device_name, device_type, device_node);
     nself->protocol = malloc(sizeof(listen_ndmp));
     memmove(nself->protocol, &listen_ndmp, sizeof(listen_ndmp));
     fd = stream_client("localhost", 2345, 32768, 32768, NULL, 0);
     if (fd < 0) {
 	amfree(nself->protocol);
-	device_set_error(dself, _("failed to open a connection to ndmp-proxy"),
+	device_set_error(dself,
+			 stralloc(_("failed to open a connection to ndmp-proxy")),
 			 DEVICE_STATUS_DEVICE_ERROR);
 	return;
     }
@@ -583,10 +584,11 @@ dbprintf("ndmp_device_open_device: %s : %s : %s\n", device_name, device_type, de
     nself->protocol->fd = fd;
     nself->device_name = stralloc(device_node);
 
-dbprintf("connected to ndmp-proxy: %d\n", nself->protocol->fd);
+    dbprintf("connected to ndmp-proxy: %d\n", nself->protocol->fd);
     rc = amprotocol_send_list(nself->protocol, CMD_DEVICE, 0);
     if (rc <= 0) {
-	device_set_error(dself, _("failed to write CMD_DEVICE to ndmp-proxy"),
+	device_set_error(dself,
+			 stralloc(_("failed to write CMD_DEVICE to ndmp-proxy")),
 			 DEVICE_STATUS_DEVICE_ERROR);
 	return;
     }
@@ -595,12 +597,14 @@ dbprintf("connected to ndmp-proxy: %d\n", nself->protocol->fd);
     c_packet = amprotocol_get(nself->protocol);
     dbprintf("get packet from ndmp-proxy 1\n");
     if (!c_packet) {
-	device_set_error(dself, vstrallocf(_("A failed to get a packet from ndmp-proxy: %s"), strerror(errno)),
+	device_set_error(dself,
+			 vstrallocf(_("A failed to get a packet from ndmp-proxy: %s"), strerror(errno)),
 			 DEVICE_STATUS_DEVICE_ERROR);
 	return;
     }
     if (c_packet->command != REPLY_DEVICE) {
-	device_set_error(dself, _("failed to get a REPLY_DEVICE from ndmp-proxy"),
+	device_set_error(dself,
+			 stralloc(_("failed to get a REPLY_DEVICE from ndmp-proxy")),
 			 DEVICE_STATUS_DEVICE_ERROR);
 	free_amprotocol_packet(c_packet);
 	return;
@@ -634,33 +638,32 @@ static void ndmp_device_finalize(GObject * obj_self)
     if(G_OBJECT_CLASS(parent_class)->finalize)
         (* G_OBJECT_CLASS(parent_class)->finalize)(obj_self);
 
-    rc = amprotocol_send_list(nself->protocol, CMD_TAPE_CLOSE, 0);
-    if (rc <= 0) {
-	dbprintf(_("failed to write CMD_TAPE_CLOSE to ndmp-proxy"));
-	goto finalize;
-    }
-    dbprintf("Sent CMD_TAPE_CLOSE to ndmp-proxy\n");
+    if (nself->open) {
+	rc = amprotocol_send_list(nself->protocol, CMD_TAPE_CLOSE, 0);
+	if (rc <= 0) {
+	    dbprintf(_("failed to write CMD_TAPE_CLOSE to ndmp-proxy"));
+	    goto finalize;
+	}
+	dbprintf("Sent CMD_TAPE_CLOSE to ndmp-proxy\n");
 
-    c_packet = amprotocol_get(nself->protocol);
-    if (!c_packet) {
-	dbprintf(_("failed to get a packet from ndmp-proxy"));
-	goto finalize;
+	c_packet = amprotocol_get(nself->protocol);
+	if (!c_packet) {
+	    dbprintf(_("failed to get a packet from ndmp-proxy"));
+	    goto finalize;
+	}
+	dbprintf("get packet from ndmp-proxy\n");
+	if (c_packet->command != REPLY_TAPE_CLOSE) {
+	    dbprintf(_("failed to get a REPLY_TAPE_CLOSE from ndmp-proxy: %d\n"), c_packet->command);
+	    goto finalize;
+	}
+	dbprintf("get REPLY_TAPE_CLOSE packet from ndmp-proxy\n");
     }
-    dbprintf("get packet from ndmp-proxy\n");
-    if (c_packet->command != REPLY_TAPE_CLOSE) {
-	dbprintf(_("failed to get a REPLY_TAPE_CLOSE from ndmp-proxy: %d\n"), c_packet->command);
-	goto finalize;
-    }
-    dbprintf("get REPLY_TAPE_CLOSE packet from ndmp-proxy\n");
 
 finalize:
-dbprintf("finalize aa\n");
     nself->open = 0;
-dbprintf("finalize bb\n");
-    robust_close(nself->protocol->fd);
-dbprintf("finalize cc\n");
+    if (nself->protocol && nself->protocol->fd >= 0)
+	robust_close(nself->protocol->fd);
     amfree(nself->protocol);
-dbprintf("finalize dd\n");
 }
 
 static gboolean setup_handle(
@@ -691,11 +694,8 @@ ndmp_device_read_label(
     fh_init(header);
 
     if (!nself->open) {
-dbprintf("A ndmp_device_read_label: try_open_ndmp_device: %d\n", rc);
 	rc = try_open_ndmp_device(nself, nself->device_name);
-dbprintf("B ndmp_device_read_label: try_open_ndmp_device: %d\n", rc);
 	if (rc == -1) {
-dbprintf("C ndmp_device_read_label: try_open_ndmp_device: %d %d\n", rc, dself->status);
 	    return dself->status;
 	}
 	nself->open = 1;
@@ -756,31 +756,23 @@ write_tapestart_header(
     char       *header_buf;
     char       *msg = NULL;
 
-dbprintf("write_tapestart_header 1\n");
     if (!ndmp_mtio_rewind(nself)) {
 	return FALSE;
     }
-dbprintf("write_tapestart_header 2\n");
 
     header = make_tapestart_header(dself, label, timestamp);
-dbprintf("write_tapestart_header 3\n");
     g_assert(header != NULL);
     header_buf = device_build_amanda_header(dself, header, NULL);
-dbprintf("write_tapestart_header 4\n");
     if (header_buf == NULL) {
-dbprintf("write_tapestart_header 5\n");
 	device_set_error(dself,
 	    stralloc(_("Tapestart header won't fit in a single block!")),
 	    DEVICE_STATUS_DEVICE_ERROR);
 	return FALSE;
     }
-dbprintf("write_tapestart_header 6\n");
     amfree(header);
 
     result = ndmp_device_robust_write(nself, header_buf, dself->block_size, &msg);
-dbprintf("write_tapestart_header 7\n");
     if (!result) {
-dbprintf("write_tapestart_header 8\n");
 	device_set_error(dself, 
 	    g_strdup_printf(_("Error writing tapestart header: %s"), msg),
 	    DEVICE_STATUS_DEVICE_ERROR);
@@ -789,17 +781,14 @@ dbprintf("write_tapestart_header 8\n");
 	return FALSE;
     }
 
-dbprintf("write_tapestart_header 9\n");
     amfree(header_buf);
     if (!ndmp_mtio_eof(nself)) {
-dbprintf("write_tapestart_header 10\n");
 	device_set_error(dself,
 			 vstrallocf(_("Error writing filemark: %s"),
 				    strerror(errno)),
 			 DEVICE_STATUS_DEVICE_ERROR|DEVICE_STATUS_VOLUME_ERROR);
 	return FALSE;
     }
-dbprintf("write_tapestart_header 11\n");
 
     return TRUE;
 }
@@ -819,16 +808,13 @@ ndmp_device_start(
     if (device_in_error(nself)) return FALSE;
 
     if (!nself->open) {
-dbprintf("ndmp_device_start 1\n");
 	try_open_ndmp_device(nself, nself->device_name);
-dbprintf("ndmp_device_start 2 %d\n", nself->protocol->fd);
 	if (!nself->open)
 	    return FALSE;
     }
 
     if (mode != ACCESS_WRITE && dself->volume_label == NULL) {
 	if (ndmp_device_read_label(dself) != DEVICE_STATUS_SUCCESS)
-dbprintf("ndmp_device_start: ndmp_device_read_label: failed\n");
 	    return FALSE;
     }
 
@@ -836,8 +822,6 @@ dbprintf("ndmp_device_start: ndmp_device_read_label: failed\n");
     dself->in_file = FALSE;
 
     if (IS_WRITABLE_ACCESS_MODE(mode)) {
-	//if (self->write_open_errno != 0) {
-	//} else
 	if (!ndmp_mtio_rewind(nself)) {
 	    return FALSE;
 	}
@@ -1071,14 +1055,15 @@ ndmp_mtio(
 
     c_packet = amprotocol_get(nself->protocol);
     if (!c_packet) {
-	device_set_error(dself, _("failed to get a REPLY_TAPE_MTIO packet from ndmp-proxy"),
+	device_set_error(dself,
+			 stralloc(_("failed to get a REPLY_TAPE_MTIO packet from ndmp-proxy")),
 			 DEVICE_STATUS_DEVICE_ERROR);
 	return FALSE;
     }
     dbprintf("get packet from ndmp-proxy\n");
     if (c_packet->command != REPLY_TAPE_MTIO) {
 	device_set_error(dself,
-			 _("failed to get a REPLY_TAPE_MTIO from ndmp-proxy"),
+			 stralloc(_("failed to get a REPLY_TAPE_MTIO from ndmp-proxy")),
 			 DEVICE_STATUS_DEVICE_ERROR);
 	return FALSE;
     }

@@ -32,6 +32,7 @@ use Amanda::Changer;
 use Amanda::Header qw( :constants );
 use Amanda::MainLoop;
 use Amanda::Tapelist;
+use Amanda::Ndmp;
 
 my $exit_status = 0;
 
@@ -111,6 +112,11 @@ $subs{'start'} = make_cb(start => sub {
 	    return failure("Label '$opt_label' already on a volume");
 	}
     }
+    my $errmsg = Amanda::Ndmp::start_ndmp_proxy();
+
+    if (defined $errmsg) {
+	return failure($errmsg);
+    }
 
     $subs{'load'}->();
 });
@@ -155,6 +161,7 @@ $subs{'loaded'} = make_cb(loaded => sub {
     } elsif ($dev->status != $DEVICE_STATUS_SUCCESS) {
 	# but anything else is fatal
 	print "Error reading volume label: " . $dev->error_or_status(), "\n";
+	$dev_ok = 0;
     } else {
 	# this is a labeled Amanda tape
 	my $label = $dev->volume_label;
@@ -225,4 +232,5 @@ $subs{'released'} = make_cb(released => sub {
 
 $subs{'start'}->();
 Amanda::MainLoop::run();
+Amanda::Util::finish_application();
 exit($exit_status);
