@@ -149,7 +149,10 @@ ndmca_test_load_tape (struct ndm_session *sess)
 	if (rc) return rc;
 
 	rc = ndmca_connect_tape_agent(sess);
-	if (rc) return rc;
+	if (rc) {
+		ndmconn_destruct (sess->plumb.tape);
+		return rc;	/* already tattled */
+	}
 
 	rc = ndmca_media_load_first (sess);
 	if (rc) return rc;

@@ -304,6 +304,7 @@ ndmca_tape_open (struct ndm_session *sess)
 		request->device = ca->job.tape_device;
 		request->mode = ca->tape_mode;
 		rc = NDMC_CALL(conn);
+		ca->tape_state.error = reply->error;
 	NDMC_ENDWITH
 
 	return rc;
@@ -335,6 +336,7 @@ ndmca_tape_get_state (struct ndm_session *sess)
 		if (rc) {
 			NDMOS_MACRO_ZEROFILL (state);
 			/* tape_state.state = -1; */
+			state->error = reply->error;
 		} else {
 			*state = *reply;
 		}
@@ -380,12 +382,12 @@ ndmca_tape_mtio (struct ndm_session *sess,
 		request->count = count;
 
 		rc = NDMC_CALL(conn);
-		if (rc) return rc;
-
-		if (resid) {
-			*resid = reply->resid_count;
-		} else if (reply->resid_count != 0) {
-			return -1;
+		if (!rc) {
+			if (resid) {
+				*resid = reply->resid_count;
+			} else if (reply->resid_count != 0) {
+				return -1;
+			}
 		}
 	NDMC_ENDWITH
 
@@ -427,6 +429,28 @@ ndmca_tape_read (struct ndm_session *sess, char *buf, unsigned count)
 			} else {
 				rc = -1;
 			}
+		}
+		NDMC_FREE_REPLY();
+	NDMC_ENDWITH
+
+	return rc;
+}
+
+
+int
+ndmca_tape_read_partial (struct ndm_session *sess, char *buf, unsigned count, int *read_count)
+{
+	struct ndmconn *	conn = sess->plumb.tape;
+	int			rc;
+
+	NDMC_WITH(ndmp9_tape_read, NDMP9VER)
+		request->count = count;
+		rc = NDMC_CALL(conn);
+		if (rc == 0) {
+			*read_count = reply->data_in.data_in_len;
+			bcopy (reply->data_in.data_in_val, buf, *read_count);
+		} else {
+			rc = reply->error;
 		}
 		NDMC_FREE_REPLY();
 	NDMC_ENDWITH

@@ -188,7 +188,7 @@ int
 ndmhost_lookup (char *hostname, struct sockaddr_in *sin)
 {
 	struct hostent *	he;
-	unsigned long		addr;
+	in_addr_t		addr;
 
 	NDMOS_MACRO_ZEROFILL (sin);
 #ifdef NDMOS_OPTION_HAVE_SIN_LEN

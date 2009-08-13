@@ -20,11 +20,14 @@ AM_LDFLAGS = $(AMANDA_STATIC_LDFLAGS)
 SCRIPTS_PERL = script-email \
 	     amlog-script \
 	     ampgsql \
-	     amndmp \
 	     amzfs-sendrecv \
 	     amzfs-snapshot \
 	     amsamba \
 	     amsuntar
+
+if WANT_NDMP
+SCRIPTS_PERL += amndmp
+endif
 
 SCRIPTS_SHELL = $(amlibexec_SCRIPTS)
 

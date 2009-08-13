@@ -76,7 +76,10 @@ ndmca_op_init_labels (struct ndm_session *sess)
 	if (rc) return rc;	/* already tattled */
 
 	rc = ndmca_connect_tape_agent (sess);
-	if (rc) return rc;	/* already tattled */
+	if (rc) {
+		ndmconn_destruct (sess->plumb.tape);
+		return rc;	/* already tattled */
+	}
 
 	for (i = 0; i < n_media; i++) {
 		ca->cur_media_ix = i;
@@ -131,8 +134,10 @@ ndmca_op_list_labels (struct ndm_session *sess)
 		}
 	}
 
-	if ((rc = ndmca_connect_tape_agent (sess)) != 0)
+	if ((rc = ndmca_connect_tape_agent (sess)) != 0) {
+		ndmconn_destruct (sess->plumb.tape);
 		return rc;	/* already tattled */
+	}
 
 	n_media = mtab->n_media;
 

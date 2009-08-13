@@ -135,17 +135,17 @@ Same series using only resident DATA and TAPE on local host
 
 	% ndmjob -cvv \
 		-D. -C /tmp -F tough -I c-index \
-		-Tlocalhost,, -f FakeTape
+		-Tlocalhost,ndmp,ndmp -f FakeTape
 
 	% ndmjob -tvv \
 		-D. -I t-seq-index -E RECOVER_DIRECT=no \
-		-Tlocalhost,, -f FakeTape
+		-Tlocalhost,ndmp,ndmp -f FakeTape
 
 	% diff c-index t-seq-index
 
 	% ndmjob -tvv \
 		-D. -I t-dir-index -E RECOVER_DIRECT=yes \
-		-Tlocalhost,, -f FakeTape
+		-Tlocalhost,ndmp,ndmp -f FakeTape
 
 	% diff c-index t-dir-index
 

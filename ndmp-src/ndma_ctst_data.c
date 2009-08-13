@@ -97,7 +97,10 @@ ndmca_op_test_data (struct ndm_session *sess)
 	int			rc;
 
 	rc = ndmca_connect_data_agent(sess);
-	if (rc) return rc;
+	if (rc) {
+		ndmconn_destruct (sess->plumb.data);
+		return rc;
+	}
 
 	conn = sess->plumb.data;
 	save_call = conn->call;

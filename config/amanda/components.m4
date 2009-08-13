@@ -20,6 +20,7 @@ AC_DEFUN([AMANDA_CHECK_COMPONENTS], [
     AC_REQUIRE([AMANDA_WITHOUT_AMRECOVER])
     AC_REQUIRE([AMANDA_WITH_CLIENT_ONLY]) dnl deprecated
     AC_REQUIRE([AMANDA_WITH_SERVER_ONLY]) dnl deprecated
+    AC_REQUIRE([AMANDA_WITHOUT_NDMP])
 
     # detect invalid combinations of components
     if ! ${WANT_SERVER-true} && ${WANT_RESTORE-true}; then
@@ -33,6 +34,7 @@ AC_DEFUN([AMANDA_CHECK_COMPONENTS], [
     AM_CONDITIONAL(WANT_RESTORE, $WANT_RESTORE)
     AM_CONDITIONAL(WANT_SERVER, $WANT_SERVER)
     AM_CONDITIONAL(WANT_RECOVER, $WANT_RECOVER)
+    AM_CONDITIONAL(WANT_NDMP, $WANT_NDMP)
 
     AM_CONDITIONAL(WANT_TAPE, $WANT_SERVER || $WANT_RESTORE)
 ])
@@ -118,9 +120,31 @@ AC_DEFUN([AMANDA_WITHOUT_AMRECOVER], [
 	AS_HELP_STRING([--without-amrecover],
 		       [do not build amrecover]), [
 	    case "$withval" in
-	    y | ye | yes) WANT_RECOVER=false;;
+	    y | ye | yes) WANT_RECOVER=true;;
 	    n | no) WANT_RECOVER=false;;
 	    *) AC_MSG_ERROR([You must not supply an argument to --with-amrecover option.]) ;;
+	    esac
+	])
+])
+
+# SYNOPSIS
+#
+#   AMANDA_WITHOUT_NDMP
+#
+# OVERVIEW
+#
+#   Add option --without-ndmp, and set WANT_NDMP to
+#   true or false, accordingly.
+#
+AC_DEFUN([AMANDA_WITHOUT_NDMP], [
+    WANT_NDMP=yes
+    AC_ARG_WITH(ndmp,
+	AS_HELP_STRING([--without-ndmp],
+		       [do not build ndmp]), [
+	    case "$withval" in
+	    y | ye | yes) WANT_NDMP=true;;
+	    n | no) WANT_NDMP=false;;
+	    *) AC_MSG_ERROR([You must not supply an argument to --with-ndmp option.]) ;;
 	    esac
 	])
 ])
@@ -140,6 +164,7 @@ AC_DEFUN([AMANDA_WITH_SERVER_ONLY], [
 	[   AC_MSG_ERROR([--with-server-only is deprecated, use --without-client instead.])
 	],)
 ])
+
 
 # SYNOPSIS
 #
@@ -169,6 +194,11 @@ AC_DEFUN([AMANDA_SHOW_COMPONENTS_SUMMARY],
     fi
     if $WANT_RECOVER; then
 	components="$components amrecover";
+    else 
+	components="$components (no amrecover)";
+    fi
+    if $WANT_NDMP; then
+	components="$components ndmp";
     else 
 	components="$components (no amrecover)";
     fi

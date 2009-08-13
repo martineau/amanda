@@ -96,7 +96,7 @@
 
 
 #include "ndmlib.h"
-
+#include "../common-src/amprotocol.h"
 
 
 
@@ -1078,6 +1078,17 @@ struct ndm_session {
 	NDM_FLAG_DECL(md5_challenge_valid)
 
 	int			connect_status;
+
+	int			proxy_port;
+	struct ndmchan		proxy_input;
+	struct ndmchan		proxy_listen;
+	struct ndmchan		proxy_device;
+	struct ndmchan		proxy_application;
+	struct ndmchan		proxy_changer;
+	amprotocol_t		*protocol_listen;
+	amprotocol_t		*protocol_device;
+	amprotocol_t		*protocol_application;
+	amprotocol_t		*protocol_changer;
 
 #ifdef NDMOS_MACRO_SESSION_ADDITIONS
 	NDMOS_MACRO_SESSION_ADDITIONS

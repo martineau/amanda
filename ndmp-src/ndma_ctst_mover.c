@@ -139,7 +139,10 @@ ndmca_op_test_mover (struct ndm_session *sess)
 		 * Sometimes needed to aid resident tape agent test
 		 */
 		rc = ndmca_connect_data_agent (sess);
-		if (rc) return rc;
+		if (rc) {
+			ndmconn_destruct (sess->plumb.data);
+			return rc;
+		}
 	}
 
 	rc = ndmca_test_load_tape (sess);

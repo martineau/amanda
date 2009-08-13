@@ -75,7 +75,6 @@
 #include <ctype.h>
 #include <time.h>
 
-extern long inet_addr();
 extern char *inet_ntoa();
 
 #undef NDMOS_OPTION_HAVE_SIN_LEN

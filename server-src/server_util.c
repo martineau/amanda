@@ -423,3 +423,39 @@ get_master_process(
     fclose(log);
     return stralloc("UNKNOWN");
 }
+
+
+int
+start_ndmp_proxy(
+    char **errmsg)
+{
+    char *ndmp_proxy;
+    char *proxy_argv[] = { "amanda_ndmp",
+			   "-o", "proxy=2345",
+			   "-d9", "-L/tmp/proxy.log",
+			   NULL };
+    char  buffer[32769];
+    int   proxy_in, proxy_out, proxy_err;
+    int   rc;
+
+    proxy_err = debug_fd();
+    ndmp_proxy = g_strdup_printf("%s/amanda_ndmp", amlibexecdir);
+    pipespawnv(ndmp_proxy, STDIN_PIPE | STDOUT_PIPE, 0,
+	       &proxy_in, &proxy_out, &proxy_err, proxy_argv);
+
+    rc = read(proxy_out, buffer, sizeof(buffer)-1);
+    if (rc == -1) {
+	*errmsg = g_strdup_printf("Error reading from ndmp-proxy: %s",
+				  strerror(errno));
+	return FALSE;
+    } else if (rc == 0) {
+	*errmsg = g_strdup_printf("ndmp-proxy ended unexpectedly");
+	return FALSE;
+    }
+    buffer[rc] = '\0';
+    if (strcmp(buffer, "OK\n") != 0) {
+	*errmsg = g_strdup_printf("ndmp-proxy failed: %s", buffer);
+	return FALSE;
+    }
+    return TRUE;
+}

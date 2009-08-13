@@ -60,8 +60,10 @@ ndmca_opq_data (struct ndm_session *sess)
 		return 0;
 
 	rc = ndmca_connect_data_agent (sess);
-	if (rc)
+	if (rc) {
+		ndmconn_destruct (sess->plumb.data);
 		return rc;	/* already tattled */
+	}
 
 	ndmalogqr (sess, "");
 	ndmalogqr (sess, "Data Agent %s NDMPv%d",
@@ -94,8 +96,10 @@ ndmca_opq_tape (struct ndm_session *sess)
 		return 0;
 
 	rc = ndmca_connect_tape_agent (sess);
-	if (rc)
+	if (rc) {
+		ndmconn_destruct (sess->plumb.tape);
 		return rc;	/* already tattled */
+	}
 
 	ndmalogqr (sess, "");
 	ndmalogqr (sess, "Tape Agent %s NDMPv%d",

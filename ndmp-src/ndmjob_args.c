@@ -232,6 +232,13 @@ process_args (int argc, char *argv[])
 		}
 		break;
 
+	    case 'y':	/* -y fd -- file descriptor to listen to */
+		y_fd = atoi(optarg);
+		if (y_fd < 1 || y_fd > 32768) {
+			error_byebye ("bad -y option");
+		}
+		break;
+
 	    case 'C':	/* -C DIR   -- change directory on data agent */
 #if 0
 		/* allow second to override first. make recover easier */
@@ -560,6 +567,7 @@ struct ndmp_enum_str_table	mode_long_name_table[] = {
 #endif /* !NDMOS_OPTION_NO_CONTROL_AGENT */
 #ifndef NDMOS_EFFECT_NO_SERVER_AGENTS
 	{ "daemon",		'D' },
+	{ "proxy",		'y' },
 #endif /* !NDMOS_EFFECT_NO_SERVER_AGENTS */
 	{ 0 }
 };
@@ -597,6 +605,8 @@ handle_long_option (char *str)
 			case NDM_JOB_OP_IMPORT_TAPE:
 				o_to_addr = atoi(value);
 				break;
+			case 'y':
+				o_proxy = atoi(value);
 			}
 		}
 	} else if (strcmp (name, "swap-connect") == 0) {

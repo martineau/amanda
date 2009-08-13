@@ -90,4 +90,6 @@ void run_server_scripts(execute_on_t  execute_on,
 void run_amcleanup(char *config_name);
 char *get_master_process(char *logfile);
 
+int start_ndmp_proxy(char **errmsg);
+
 #endif	/* SERVER_UTIL_H */

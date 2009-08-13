@@ -82,6 +82,19 @@ main (int ac, char *av[])
 		return 0;
 	}
 
+	if (the_mode == 'y') {
+		the_session.param = the_param;
+		the_session.proxy_port = o_proxy;
+
+		if (n_noop) {
+			dump_settings();
+			return 0;
+		}
+		start_log_file ();
+		ndma_proxy_session (&the_session);
+		return 0;
+	}
+
 #ifndef NDMOS_OPTION_NO_CONTROL_AGENT
 	the_session.control_acb.swap_connect = (o_swap_connect != 0);
 

@@ -103,7 +103,7 @@ LINTFLAGS=$(AMLINTFLAGS)
 LIB_EXTENSION = la
 
 amlib_LTLIBRARIES =     libndmjla.la \
-			libamndmp_backup_ndmjla.la \
+			libamanda_ndmjla.la \
 			libndmjlr.la \
 			libndmjll.la \
 			libndmjlp.la \
@@ -111,18 +111,19 @@ amlib_LTLIBRARIES =     libndmjla.la \
 			libndmjl5.la \
 			libndmjlo.la
 
-amlibexec_PROGRAMS = ndmjob amndmp_backup
+amlibexec_PROGRAMS = ndmjob amanda_ndmp
 
 INSTALLPERMS_exec = \
 	dest=$(amlibexecdir) chown=amanda chmod= \
 		$(amlibexec_PROGRAMS) \
 	chown=root chmod=04750 \
-		ndmjob amndmp_backup
+		ndmjob amanda_ndmp
 
 libndmjla_la_SOURCES = \
 	ndma_comm_job.c \
 	ndma_comm_session.c \
 	ndma_comm_dispatch.c \
+	ndma_comm_proxy.c \
 	ndma_comm_subr.c \
 	ndma_control.c \
 	ndma_cops_backreco.c \
@@ -147,10 +148,11 @@ libndmjla_la_SOURCES = \
 	ndma_robot.c \
 	wraplib.c
 
-libamndmp_backup_ndmjla_la_SOURCES = \
+libamanda_ndmjla_la_SOURCES = \
 	ndma_comm_job.c \
 	ndma_comm_session.c \
 	ndma_comm_dispatch.c \
+	ndma_comm_proxy.c \
 	ndma_comm_subr.c \
 	ndma_control.c \
 	ndma_cops_backreco.c \
@@ -171,7 +173,7 @@ libamndmp_backup_ndmjla_la_SOURCES = \
 	ndma_image_stream.c \
 	ndma_noti_calls.c \
 	ndma_tape.c \
-	amndmp_backup_tape_simulator.c \
+	amanda_ndmp_tape_simulator.c \
 	ndma_robot.c \
 	wraplib.c
 
@@ -258,8 +260,8 @@ NDMJOBLIB = \
 	ndmjl5.rel \
 	ndmjlo.rel
 
-AMNDMP_BACKUP_LIB = \
-	amndmp_backup_ndmjla.rel \
+AMANDA_NDMP_LIB = \
+	amanda_ndmp_ndmjla.rel \
 	ndmjlr.rel \
 	ndmjll.rel \
 	ndmjlp.rel \
@@ -268,18 +270,18 @@ AMNDMP_BACKUP_LIB = \
 	ndmjlo.rel
 
 
-#all: ndmjob wrap_tar wrap_test icheck amndmp_backup
-all: ndmjob amndmp_backup
+#all: ndmjob wrap_tar wrap_test icheck amanda_ndmp
+all: ndmjob amanda_ndmp
 
 ndmjob_SOURCES = ndmjob_main.c \
 		 ndmjob_args.c \
 		 ndmjob_job.c \
 		 ndmjob_rules.c
 
-amndmp_backup_SOURCES = ndmjob_main.c \
-			ndmjob_args.c \
-			ndmjob_job.c \
-			ndmjob_rules.c
+amanda_ndmp_SOURCES = ndmjob_main.c \
+		      ndmjob_args.c \
+		      ndmjob_job.c \
+		      ndmjob_rules.c
 
 ndmjob_LDADD = \
 	libndmjla.la \
@@ -290,8 +292,8 @@ ndmjob_LDADD = \
 	libndmjl5.la \
 	libndmjlo.la
 	
-amndmp_backup_LDADD = \
-	libamndmp_backup_ndmjla.la \
+amanda_ndmp_LDADD = \
+	libamanda_ndmjla.la \
 	libndmjlr.la \
 	libndmjll.la \
 	libndmjlp.la \
@@ -299,45 +301,6 @@ amndmp_backup_LDADD = \
 	libndmjl5.la \
 	libndmjlo.la
 	
-#ndmjob_main.o: ndmjob.h
-#
-#ndmjob: $(NDMJOB_OBJS) $(NDMJOBLIB)
-#	cc -o ndmjob  $(NDMJOB_OBJS) $(NDMJOBLIB) $(LIBS)
-#
-#amndmp_backup: $(NDMJOB_OBJS) $(AMNDMP_BACKUP_LIB)
-#	cc -o amndmp_backup  $(NDMJOB_OBJS) $(AMNDMP_BACKUP_LIB) $(LIBS)
-
-#ndmjoblib: $(NDMJOBLIB)
-
-
-#ndmjla.rel : $(NDMJLA_OBJS)
-#	ld -r -o ndmjla.rel $(NDMJLA_OBJS)
-
-#amndmp_backup_ndmjla.rel : $(AMNDMP_BACKUP_NDMJLA_OBJS)
-#	ld -r -o amndmp_backup_ndmjla.rel $(AMNDMP_BACKUP_NDMJLA_OBJS)
-
-#ndmjlr.rel : $(NDMJLR_OBJS)
-#	ld -r -o ndmjlr.rel $(NDMJLR_OBJS)
-
-#ndmjll.rel : $(NDMJLL_OBJS)
-#	ld -r -o ndmjll.rel $(NDMJLL_OBJS)
-
-#ndmjlp.rel : $(NDMJLP_OBJS)
-#	ld -r -o ndmjlp.rel $(NDMJLP_OBJS)
-
-#ndmjls.rel : $(NDMJLS_OBJS)
-#	ld -r -o ndmjls.rel $(NDMJLS_OBJS)
-
-#ndmjl5.rel : $(NDMJL5_OBJS)
-#	ld -r -o ndmjl5.rel $(NDMJL5_OBJS)
-
-#ndmjlo.rel : $(NDMJLO_OBJS)
-#	ld -r -o ndmjlo.rel $(NDMJLO_OBJS)
-
-#$(NDMJLO_OBJS) : $(NDMJLO_SRCS)
-
-
-
 
 #
 # The NDMJOBLIB is dropped with rpcgen(1) results.

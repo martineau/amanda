@@ -135,7 +135,10 @@ ndmca_op_mtio (struct ndm_session *sess, ndmp9_tape_mtio_op mtio_op)
 	ca->is_label_op = 1;
 
 	rc = ndmca_connect_tape_agent (sess);
-	if (rc) return rc;	/* already tattled */
+	if (rc) {
+		ndmconn_destruct (sess->plumb.tape);
+		return rc;	/* already tattled */
+	}
 
 	rc = ndmca_media_open_tape (sess);
 	if (rc) return rc;	/* already tattled */

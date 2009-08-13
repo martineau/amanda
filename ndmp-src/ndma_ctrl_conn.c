@@ -92,7 +92,8 @@ ndmca_connect_xxx_agent (
 
   error_out:
 	ndmalogf (sess, prefix, 0, "err %s", ndmconn_get_err_msg (conn));
-	ndmconn_destruct (conn);
+	//ndmconn_destruct (conn);
+	*connp = conn;
 	return -1;
 
 }
@@ -123,7 +124,10 @@ ndmca_connect_tape_agent (struct ndm_session *sess)
 
 	if (sess->control_acb.job.tape_agent.conn_type == NDMCONN_TYPE_NONE) {
 		rc = ndmca_connect_data_agent (sess);
-		if (rc) return rc;
+		if (rc) {
+			ndmconn_destruct (sess->plumb.data);
+			return rc;
+		}
 		sess->plumb.tape = sess->plumb.data;
 		rc = 0;
 	} else {
@@ -131,6 +135,7 @@ ndmca_connect_tape_agent (struct ndm_session *sess)
 				&sess->plumb.tape,
 				"#T",
 				&sess->control_acb.job.tape_agent);
+		ndmalogf (sess, 0, 7, "ndmca_connect_tape_agent: %d %p", rc, sess->plumb.tape);
 	}
 
 	if (rc == 0) {

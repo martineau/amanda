@@ -217,12 +217,12 @@ sub command_backup {
     if ($pid == 0) {
 	#child
 	close(0);
-	my $amndmp_backup = $Amanda::Paths::amlibexecdir . "/amndmp_backup";
+	my $amanda_ndmp = $Amanda::Paths::amlibexecdir . "/amanda_ndmp";
 	my @ARGV = ();
 	my $D = $self->{ndmphost};
 	$D .= ":" . $self->{port} if ($self->{port});
 	$D .= "/m4," . $self->{username} . "," . $self->{password};
-	push @ARGV, $amndmp_backup,
+	push @ARGV, $amanda_ndmp,
                     "-c",
                     "-D", $D,
                     "-T.",
@@ -241,7 +241,7 @@ sub command_backup {
 	}
 	my $line = "Execute: " . join(" ", @ARGV);
 	debug($line);
-	exec {$amndmp_backup} @ARGV;
+	exec {$amanda_ndmp} @ARGV;
 	exit;
     }
     close($index_wtr);
@@ -314,7 +314,7 @@ sub command_backup {
     waitpid $pid, 0;
     if ($? != 0) {
 	$self->print_to_server_and_die($self->{action},
-				       "amndmp_backup returned error",
+				       "amanda_ndmp returned error",
 				       $Amanda::Script_App::ERROR);
     }
     exit 0;
@@ -327,11 +327,11 @@ sub command_restore {
     $self->{restore} = 'backup';
     $self->findpass();
 
-    my $amndmp_backup = $Amanda::Paths::amlibexecdir . "/amndmp_backup";
+    my $amanda_ndmp = $Amanda::Paths::amlibexecdir . "/amanda_ndmp";
     my $D = $self->{ndmphost};
     $D .= ":" . $self->{port} if ($self->{port});
     $D .= "/m4," . $self->{username} . "," . $self->{password};
-    push @cmd, $amndmp_backup,
+    push @cmd, $amanda_ndmp,
                "-x",
                "-D", $D,
                "-T.",

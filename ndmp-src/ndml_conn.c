@@ -35,6 +35,7 @@
  */
 
 
+#include "ndmjob.h"
 #include "ndmlib.h"
 
 
@@ -192,13 +193,17 @@ ndmconn_connect_sockaddr_in (struct ndmconn *conn,
 
 	fd = socket (AF_INET, SOCK_STREAM, 0);
 	if (fd < 0) {
-		err = "socket";
+		err = malloc(1024);
+		snprintf(err, 1023, "open a socket failed: %s", strerror(errno));
 		goto error_out;
 	}
 
 	/* reserved port? */
 	if (connect (fd, (struct sockaddr *)sin, sizeof *sin) < 0) {
-		err = "connect";
+ndmalogf (&the_session, 0, 7, "connect failed a1");
+		err = malloc(1024);
+		snprintf(err, 1023, "connect failed: %s", strerror(errno));
+ndmalogf (&the_session, 0, 7, "connect failed a2");
 		goto error_out;
 	}
 
@@ -258,6 +263,7 @@ ndmconn_connect_sockaddr_in (struct ndmconn *conn,
 	return 0;
 
   error_out:
+ndmalogf (&the_session, 0, 7, "connect failed a3");
 	if (fd >= 0) {
 		close (fd);
 		fd = -1;
@@ -266,6 +272,7 @@ ndmconn_connect_sockaddr_in (struct ndmconn *conn,
 	conn->chan.mode = NDMCHAN_MODE_IDLE;
 	conn->conn_type = NDMCONN_TYPE_NONE;
 
+ndmalogf (&the_session, 0, 7, "connect failed a4 %s", err);
 	return ndmconn_set_err_msg (conn, err);
 }
 

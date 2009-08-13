@@ -506,10 +506,16 @@ ndmca_backreco_startup (struct ndm_session *sess)
 	if (rc) return rc;
 
 	rc = ndmca_connect_data_agent(sess);
-	if (rc) return rc;
+	if (rc) {
+		ndmconn_destruct (sess->plumb.data);
+		return rc;
+	}
 
 	rc = ndmca_connect_tape_agent(sess);
-	if (rc) return rc;
+	if (rc) {
+		ndmconn_destruct (sess->plumb.tape);
+		return rc;
+	}
 
 	rc = ndmca_mover_set_record_size (sess);
 	if (rc) return rc;
