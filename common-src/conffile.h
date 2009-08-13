@@ -271,6 +271,11 @@ execute_on_t          val_t_to_execute_on(val_t *);
 execute_where_t       val_t_to_execute_where(val_t *);
 send_amreport_t       val_t_to_send_amreport(val_t *);
 
+/* Functions to typecheck and set a particular type of
+ * value from a val_t.  All call error() if the type is incorrect,
+ * as this is a programming error.  */
+void int_to_val_t(val_t *val, int value);
+
 /* Has the given val_t been seen in a configuration file or config overwrite?
  *
  * @param val: val_t* to examine
@@ -420,6 +425,10 @@ typedef enum {
     CNF_RESERVED_TCP_PORT,
     CNF_UNRESERVED_TCP_PORT,
     CNF_HOLDINGDISK,
+    CNF_NDMP_PROXY,
+    CNF_NDMP_PROXY_PORT,
+    CNF_NDMP_PROXY_DEBUG_FILE,
+    CNF_NDMP_PROXY_DEBUG_LEVEL,
     CNF_CNF /* sentinel */
 } confparm_key;
 
@@ -438,7 +447,7 @@ val_t *getconf(confparm_key key);
 #define getconf_seen(key)       (val_t_seen(getconf((key))))
 
 /* (convenience macros)
- * Fetch a gloabl parameter of a specific type.  Note that these
+ * Fetch a global parameter of a specific type.  Note that these
  * convenience macros have a different form from those for the
  * subsections: here you specify a type and a key, while for the
  * subsections you specify only a key.  The difference is historical.
@@ -467,6 +476,19 @@ val_t *getconf(confparm_key key);
 #define getconf_intrange(key)     (val_t_to_intrange(getconf((key))))
 #define getconf_proplist(key)     (val_t_to_proplist(getconf((key))))
 #define getconf_send_amreport(key) (val_t_to_send_amreport(getconf((key))))
+
+/* set a conf value */
+/* (convenience macros)
+ * Set a global parameter of a specific type.  Note that these
+ * convenience macros have a different form from those for the
+ * subsections: here you specify a type and a key, while for the
+ * subsections you specify only a key.  The difference is historical.
+ *
+ * @param key  : confparm_key
+ *        value: The value to assign to the key
+ * @returns: nothing
+ */
+#define setconf_int(key, value)   (int_to_val_t(getconf((key)),value))
 
 /* Get a list of names for subsections of the given type
  *

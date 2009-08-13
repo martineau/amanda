@@ -429,20 +429,53 @@ int
 start_ndmp_proxy(
     char **errmsg)
 {
-    char *ndmp_proxy;
-    char *proxy_argv[] = { "amanda_ndmp",
-			   "-o", "proxy=2345",
-			   "-d9", "-L/tmp/proxy.log",
-			   NULL };
-    char  buffer[32769];
-    int   proxy_in, proxy_out, proxy_err;
-    int   rc;
+    int        use_ndmp;
+    char      *ndmp_proxy;
+    GPtrArray *proxy_argv;
+    char       buffer[32769];
+    int        proxy_in, proxy_out, proxy_err;
+    int        rc;
+    int        ndmp_proxy_port;
+    int        ndmp_proxy_debug_level;
+    char      *ndmp_proxy_debug_file;
+    char      *cmdline;
+    int        i;
 
+    use_ndmp = getconf_boolean(CNF_NDMP_PROXY);
+    if (!use_ndmp) {
+	return TRUE;
+    }
+
+    ndmp_proxy_port = getconf_int(CNF_NDMP_PROXY_PORT);
+    ndmp_proxy_debug_level = getconf_int(CNF_NDMP_PROXY_DEBUG_LEVEL);
+    ndmp_proxy_debug_file = getconf_str(CNF_NDMP_PROXY_DEBUG_FILE);
+    proxy_argv = g_ptr_array_new();
+    g_ptr_array_add(proxy_argv, stralloc("ndmp-proxy"));
+    g_ptr_array_add(proxy_argv, stralloc("-o"));
+    g_ptr_array_add(proxy_argv, g_strdup_printf("proxy=%d", ndmp_proxy_port));
+    if (ndmp_proxy_debug_level > 0 &&
+	ndmp_proxy_debug_file && strlen(ndmp_proxy_debug_file) > 1) {
+	g_ptr_array_add(proxy_argv, g_strdup_printf("-d%d",
+						    ndmp_proxy_debug_level));
+	g_ptr_array_add(proxy_argv, g_strdup_printf("-L%s",
+						    ndmp_proxy_debug_file));
+    }
+    g_ptr_array_add(proxy_argv, NULL);
     proxy_err = debug_fd();
     ndmp_proxy = g_strdup_printf("%s/amanda_ndmp", amlibexecdir);
-    pipespawnv(ndmp_proxy, STDIN_PIPE | STDOUT_PIPE, 0,
-	       &proxy_in, &proxy_out, &proxy_err, proxy_argv);
 
+    cmdline = stralloc(ndmp_proxy);
+    for(i = 1; i < proxy_argv->len-1; i++) {
+	cmdline = vstrextend(&cmdline, " ",
+			     (char *)g_ptr_array_index(proxy_argv, i), NULL);
+    }
+    dbprintf(_("running: \"%s\"\n"), cmdline);
+    amfree(cmdline);
+
+    pipespawnv(ndmp_proxy, STDIN_PIPE | STDOUT_PIPE, 0,
+	       &proxy_in, &proxy_out, &proxy_err, (char **)proxy_argv->pdata);
+
+    g_ptr_array_free_full(proxy_argv);
     rc = read(proxy_out, buffer, sizeof(buffer)-1);
     if (rc == -1) {
 	*errmsg = g_strdup_printf("Error reading from ndmp-proxy: %s",
@@ -453,9 +486,10 @@ start_ndmp_proxy(
 	return FALSE;
     }
     buffer[rc] = '\0';
-    if (strcmp(buffer, "OK\n") != 0) {
+    if (strncmp(buffer, "PORT ", 5) != 0) {
 	*errmsg = g_strdup_printf("ndmp-proxy failed: %s", buffer);
 	return FALSE;
     }
+    val_t__int(getconf(CNF_NDMP_PROXY_PORT)) = atoi(buffer+5);
     return TRUE;
 }

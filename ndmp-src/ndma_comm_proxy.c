@@ -44,7 +44,8 @@ ndma_proxy_session (struct ndm_session *sess)
 
 	ndmos_condition_listen_socket (sess, proxy_sock);
 
-	NDMOS_MACRO_SET_SOCKADDR(&sa, 0, sess->proxy_port);
+	if (sess->proxy_port > 0)
+	    NDMOS_MACRO_SET_SOCKADDR(&sa, INADDR_LOOPBACK, sess->proxy_port);
 
 	if (bind (proxy_sock, &sa, sizeof sa) < 0) {
 		ndmalogf (sess, 0, 2, "Can't bind the socket(%d): %s\n", sess->proxy_port, strerror(errno));
@@ -53,7 +54,9 @@ ndma_proxy_session (struct ndm_session *sess)
 		perror ("bind");
 		return 2;
 	}
+	sess->proxy_port = ntohs(((struct sockaddr_in *)(&sa))->sin_port);
 
+	ndmalogf (sess, 0, 2, "listening on port %d\n",ntohs(((struct sockaddr_in *)(&sa))->sin_port));
 	if (listen (proxy_sock, 1) < 0) {
 		ndmalogf (sess, 0, 2, "Can't listen a socket: %s\n", strerror(errno));
 		fprintf(stdout, "Can't listen a socket: %s\n", strerror(errno));
@@ -68,7 +71,7 @@ ndma_proxy_session (struct ndm_session *sess)
 	ndmchan_setbuf(&sess->proxy_input, malloc(65536), 65536);
         ndmchan_start_read(&sess->proxy_input, 0);
 
-	fprintf(stdout, "OK\n");
+	fprintf(stdout, "PORT %d\n", sess->proxy_port);
 	fflush(stdout);
 
 	for (;;) {

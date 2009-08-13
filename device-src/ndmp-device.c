@@ -573,6 +573,13 @@ dbprintf("ndmp_device_open_device: %s : %s : %s\n", device_name, device_type, de
     nself->protocol = malloc(sizeof(listen_ndmp));
     memmove(nself->protocol, &listen_ndmp, sizeof(listen_ndmp));
     fd = stream_client("localhost", 2345, 32768, 32768, NULL, 0);
+    if (fd < 0) {
+	amfree(nself->protocol);
+	device_set_error(dself, _("failed to open a connection to ndmp-proxy"),
+			 DEVICE_STATUS_DEVICE_ERROR);
+	return;
+    }
+
     nself->protocol->fd = fd;
     nself->device_name = stralloc(device_node);
 
