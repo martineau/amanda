@@ -112,11 +112,10 @@ $subs{'start'} = make_cb(start => sub {
 	    return failure("Label '$opt_label' already on a volume");
 	}
     }
-    my $errmsg = Amanda::Ndmp::start_ndmp_proxy();
 
-    if (defined $errmsg) {
-	return failure($errmsg);
-    }
+    my $errmsg = Amanda::Ndmp::start_ndmp_proxy();
+    return failure($errmsg)
+	 if defined($errmsg);
 
     $subs{'load'}->();
 });
@@ -232,5 +231,6 @@ $subs{'released'} = make_cb(released => sub {
 
 $subs{'start'}->();
 Amanda::MainLoop::run();
+Amanda::Ndmp::stop_ndmp_proxy();
 Amanda::Util::finish_application();
 exit($exit_status);

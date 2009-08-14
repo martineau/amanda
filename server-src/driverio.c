@@ -292,6 +292,7 @@ taper_cmd(
     char number[NUM_STR_SIZE];
     char splitsize[NUM_STR_SIZE];
     char fallback_splitsize[NUM_STR_SIZE];
+    char proxy_port[NUM_STR_SIZE];
     char *diskbuffer = NULL;
     disk_t *dp;
     char *qname;
@@ -300,7 +301,11 @@ taper_cmd(
 
     switch(cmd) {
     case START_TAPER:
-	cmdline = vstralloc(cmdstr[cmd], " ", (char *)ptr, "\n", NULL);
+	g_snprintf(proxy_port, SIZEOF(number), "%d", level);
+	cmdline = vstralloc(cmdstr[cmd],
+			    " ", (char *)ptr,
+			    " ", proxy_port,
+			    "\n", NULL);
 	break;
     case FILE_WRITE:
 	dp = (disk_t *) ptr;

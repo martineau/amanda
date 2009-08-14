@@ -199,6 +199,9 @@ sub start {
 		handle => '99-9999', # fake handle
 		message => "$changer");
 
+	#log it
+	log_add($L_ERROR, "no-tape [$changer]");
+
 	# wait for it to be transmitted, then exit
 	$self->{'proto'}->stop(finished_cb => sub {
 	    Amanda::MainLoop::quit();

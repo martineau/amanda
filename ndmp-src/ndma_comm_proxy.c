@@ -94,11 +94,11 @@ ndma_dispatch_proxy(
 	amprotocol_packet_t *c_packet;
 
 	if (sess->proxy_input.eof) {
-		exit(1);
+		exit(0);
 	}
 
 	if (sess->proxy_input.ready) {
-		exit(1);
+		exit(0);
 	}
 
 	if (sess->proxy_listen.ready) {

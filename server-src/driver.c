@@ -99,7 +99,6 @@ static int   schedule_done;			// 1 if we don't wait for a
 						//   schedule from the planner
 static int   force_flush;			// All dump are terminated, we
 						// must now respect taper_flush
-
 static int wait_children(int count);
 static void wait_for_children(void);
 static void allocate_bandwidth(netif_t *ip, unsigned long kps);
@@ -182,6 +181,7 @@ main(
     char **result_argv = NULL;
     char *taper_program;
     char *conf_tapetype;
+    char *errmsg = NULL;
     tapetype_t *tape;
     char *line;
     char hostname[1025];
@@ -404,12 +404,19 @@ main(
 
     if(inparallel > MAX_DUMPERS) inparallel = MAX_DUMPERS;
 
+    errmsg = start_ndmp_proxy();
+    if (errmsg) {
+	log_add(L_ERROR, errmsg);
+	amfree(errmsg);
+    }
+
     /* taper takes a while to get going, so start it up right away */
 
     init_driverio();
     if(conf_runtapes > 0) {
+	int proxy_port = getconf_int(CNF_NDMP_PROXY_PORT);
         startup_tape_process(taper_program);
-        taper_cmd(START_TAPER, driver_timestamp, NULL, 0, NULL);
+        taper_cmd(START_TAPER, driver_timestamp, NULL, proxy_port, NULL);
     }
 
     /* fire up the dumpers now while we are waiting */
@@ -555,6 +562,8 @@ main(
 	taper_cmd(QUIT, NULL, NULL, 0, NULL);
     }
 
+    stop_ndmp_proxy();
+
     /* wait for all to die */
     wait_children(600);
 
@@ -626,6 +635,10 @@ wait_children(int count)
 		if (who == NULL && pid == taper_pid) {
 		    who = stralloc("taper");
 		    taper_pid = -1;
+		}
+		if (who == NULL && pid == ndmp_proxy_pid) {
+		    who = stralloc("ndmp-proxy");
+		    ndmp_proxy_pid = -1;
 		}
 		if(what != NULL && who == NULL) {
 		    who = stralloc("unknown");
@@ -700,6 +713,8 @@ wait_for_children(void)
     if(taper_pid > 1 && taper > 0) {
 	taper_cmd(QUIT, NULL, NULL, 0, NULL);
     }
+
+    stop_ndmp_proxy();
 
     if(wait_children(60) == 0)
 	return;

@@ -23,4 +23,5 @@
 %include "exception.i"
 
 char *start_ndmp_proxy(void);
-amglue_export_tag(ndmp, start_ndmp_proxy);
+void  stop_ndmp_proxy(void);
+amglue_export_tag(ndmp, start_ndmp_proxy  stop_ndmp_proxy);

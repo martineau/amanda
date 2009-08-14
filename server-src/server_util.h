@@ -52,6 +52,7 @@ enum {
     LAST_TOK
 };
 extern const char *cmdstr[];
+extern int ndmp_proxy_pid;
 
 struct cmdargs {
     cmd_t cmd;
@@ -91,5 +92,6 @@ void run_amcleanup(char *config_name);
 char *get_master_process(char *logfile);
 
 char *start_ndmp_proxy(void);
+void  stop_ndmp_proxy(void);
 
 #endif	/* SERVER_UTIL_H */
