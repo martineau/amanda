@@ -33,6 +33,7 @@ use Amanda::Debug qw(:logging);
 use Amanda::Config qw( config_dir_relative );
 use File::Copy;
 use Fcntl qw(:flock); # import LOCK_* constants
+use sort 'stable';
 
 ## package functions
 
@@ -128,14 +129,33 @@ sub add_tapelabel {
     $reuse = 1 if !defined $reuse;
 
     # prepend this (presumably new) volume to the beginning of the list
-    unshift @{$self->{'tles'}}, {
-	'datestamp' => $datestamp,
-	'label'     => $label,
-	'reuse'     => $reuse,
-	'barcode'   => $barcode,
-	'meta'      => $meta,
-	'comment'   => $comment,
+    my $tle = {
+        'datestamp' => $datestamp,
+        'label'     => $label,
+        'reuse'     => $reuse,
+        'barcode'   => $barcode,
+        'meta'      => $meta,
+        'comment'   => $comment,
     };
+    my $tles = $self->{'tles'};
+    if (!defined $tles->[0] ||
+	$tles->[0]->{'datestamp'} le $datestamp) {
+	unshift @{$tles}, $tle;
+    } elsif (defined $tles->[0] &&
+	$tles->[@$tles-1]->{'datestamp'} gt $datestamp) {
+	push @{$tles}, $tle;
+    } else {
+	my $added = 0;
+	for my $i (0..(@$tles-1)) {
+	    if ($tles->[$i]->{'datestamp'} le $datestamp) {
+		splice @{$tles}, $i, 0, $tle;
+		$added = 1;
+		last;
+	    }
+	}
+	push @{$tles}, $tle if !$added;
+	#sort {$a->{'datestamp'} cmp $b->{'datestamp'}} @{$self->{'tles'}};
+    }
     $self->_update_positions();
 }
 

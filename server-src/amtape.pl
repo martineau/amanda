@@ -525,12 +525,17 @@ sub {
     my $label = shift @args;
 
     my $chg = load_changer($finished_cb) or return;
-    my $taperscan = Amanda::Taper::Scan->new(changer => $chg,
+    my $scan_name = getconf($CNF_TAPERSCAN);
+    my $taperscan = Amanda::Taper::Scan->new(algorithm => $scan_name,
+					     changer => $chg,
 					     tapelist => $tl);
 
     my $result_cb = make_cb(result_cb => sub {
 	my ($err, $res, $label, $mode) = @_;
-	return failure($err, $finished_cb) if $err;
+	if ($err) {
+	    $taperscan->quit() if defined $taperscan;
+	    return failure($err, $finished_cb);
+	}
 
 	my $modestr = ($mode == $ACCESS_APPEND)? "append" : "write";
 	my $slot = $res->{'this_slot'};

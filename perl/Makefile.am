@@ -212,6 +212,12 @@ MAINTAINERCLEANFILES += Amanda/Feature.c Amanda/Feature.pm
 EXTRA_DIST += Amanda/Feature.swg Amanda/Feature.pm Amanda/Feature.pod
 
 if WANT_SERVER
+# PACKAGE: Amanda::ScanInventory
+Amanda_DATA += Amanda/ScanInventory.pm
+endif
+EXTRA_DIST += Amanda/ScanInventory.pm
+
+if WANT_SERVER
 # PACKAGE: Amanda::Interactive
 Amanda_DATA += Amanda/Interactive.pm
 endif
@@ -225,8 +231,12 @@ if WANT_SERVER
 # PACKAGE: Amanda::Interactive::*
 AmandaInteractivedir = $(amperldir)/Amanda/Interactive
 AmandaInteractive_DATA = \
-	Amanda/Interactive/stdin.pm
+	Amanda/Interactive/email.pm \
+	Amanda/Interactive/stdin.pm \
+	Amanda/Interactive/tty.pm \
+	Amanda/Interactive/tty_email.pm
 endif
+PM_FILES += $(AmandaInteractive_DATA)
 EXTRA_DIST += $(AmandaInteractive_DATA)
 
 if WANT_SERVER
@@ -298,6 +308,8 @@ if WANT_SERVER
 # PACKAGE: Amanda::Taper::Scan::*
 AmandaTaperScandir = $(amperldir)/Amanda/Taper/Scan
 AmandaTaperScan_DATA = \
+	Amanda/Taper/Scan/alphabetic.pm \
+	Amanda/Taper/Scan/oldest.pm \
 	Amanda/Taper/Scan/traditional.pm
 PM_FILES += $(AmandaTaperScan_DATA)
 endif

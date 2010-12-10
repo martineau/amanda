@@ -355,8 +355,16 @@ sub setup_dst {
 	if $chg->isa('Amanda::Changer::Error');
     $dst->{'chg'} = $chg;
 
+    my $interactive_name = getconf($CNF_INTERACTIVITY);
+    my $interactive;
+    if ($interactive_name) {
+	$interactive = Amanda::Interactive->new(name => $interactive_name);
+    }
+    my $scan_name = getconf($CNF_TAPERSCAN);
     $dst->{'scan'} = Amanda::Taper::Scan->new(
+	algorithm => $scan_name,
 	changer => $dst->{'chg'},
+	interactive => $interactive,
 	tapelist => $tl,
 	labelstr => getconf($CNF_LABELSTR),
 	autolabel => $self->{'dst_autolabel'});

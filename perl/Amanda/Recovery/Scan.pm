@@ -720,14 +720,8 @@ sub new {
 
     $self->{'scan_drive'} = 0;
     $self->{'scan_unknown_slot'} = 1;
-    $self->{'scan_interactivity'} = undef;
-    $self->{'poll'} = 0;
-    $self->{'wait'} = 1;
-    $self->{'poll_unknown_slot'} = 0;
-    $self->{'poll_drive'} = 0;
     $self->{'poll_delay'} = 10000; #10 seconds
-    $self->{'user_unknown_slot'} = 1;
-    $self->{'user_drive'} = 0;
+
     $self->{'fatal'} = Amanda::Recovery::Scan::SCAN_CONTINUE;
     $self->{'driveinuse'} = Amanda::Recovery::Scan::SCAN_ASK_POLL;
     $self->{'volinuse'} = Amanda::Recovery::Scan::SCAN_ASK_POLL;

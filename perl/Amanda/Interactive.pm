@@ -90,15 +90,27 @@ C<request_cb> with C<(undef, undef)>.
 
 =cut
 
+use Amanda::Config qw( :getconf );
+
 sub new {
     shift eq 'Amanda::Interactive'
 	or return;
     my %params = @_;
-    my $name = $params{'name'};
+    my $interactive_name = $params{'name'};
 
-    die("No name for Amanda::Interactive->(new)") if !defined $name;
+    my $interactive = Amanda::Config::lookup_interactivity($interactive_name);
+    my $plugin;
+    my $property;
+    if ($interactive) {
+	$plugin = Amanda::Config::interactivity_getconf($interactive, $INTERACTIVITY_PLUGIN);
+	$property = Amanda::Config::interactivity_getconf($interactive, $INTERACTIVITY_PROPERTY);
+    } else {
+	$plugin = $interactive_name;
+    }
 
-    my $pkgname = "Amanda::Interactive::$name";
+    die("No name for Amanda::Interactive->(new)") if !defined $plugin;
+
+    my $pkgname = "Amanda::Interactive::$plugin";
     my $filename = $pkgname;
     $filename =~ s|::|/|g;
     $filename .= '.pm';
@@ -111,9 +123,14 @@ sub new {
 	}
     }
 
-    my $inter = $pkgname->new(%params);
+    my $self = eval {$pkgname->new($property);};
+    if ($@ || !defined $self) {
+	print STDERR "Can't instantiate $pkgname\n";
+	debug("Can't instantiate $pkgname");
+	die("Can't instantiate $pkgname");
+    }
 
-    return $inter;
+    return $self;
 }
 
 1;
